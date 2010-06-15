@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 import sys
+
+reload(sys)
+sys.setdefaultencoding('utf8')
+del sys.setdefaultencoding
+
 import os.path
 import codecs
 import re
@@ -19,7 +24,7 @@ def parseSimpleString(s):
                 n += 1
             else:
                 n += s.count(',')-1
-                
+
     for match in regions(s):
         non_literal, literal = match.groups()
         if non_literal:
@@ -40,7 +45,7 @@ def parseSimpleString(s):
     if regions:
         if mlen(regions[-1]) < mlen(fields): print "BADLEN3:",mlen(regions[-1]),mlen(fields),"\n",''.join(regions[-1]),"\n",''.join(fields)
     regions.append(fields)
-            
+
     return regions
 
 def parseString(s):
@@ -49,9 +54,9 @@ def parseString(s):
     if s.find(r"\\'") < 0:
         return parseSimpleString(s.replace(r"\'","''"))
     return [[y.replace("||||||||||",r"\\") for y in x] for x in parseSimpleString(s.replace(r"\\","||||||||||").replace(r"\'","''"))]
-    
+
 class Table:
-    
+
     def __init__(self, s):
         cm = re.match(u"^CREATE TABLE\s+`(\w+)`\s+[(]", s)
         if cm:
@@ -71,7 +76,7 @@ class Table:
             pass
         self.fields[name] = coldef.replace("unsigned", "")
         self.field_names.append(name)
-        
+
     def add(self, l):
         if l[0] == '`':
             self.addcol(l)
@@ -99,7 +104,7 @@ class Table:
         s = u'CREATE TABLE "%s" (\n%s\n);' % (self.name,
                                          ',\n'.join(fields))
         return s
-        
+
 class Converter:
 
     def __init__(self, file_in):
@@ -110,7 +115,8 @@ class Converter:
         self.ins = ''
 
     def convert(self, file_out):
-        self.fin = open(self.file_in, mode='r'0
+        self.fin = open(self.file_in, mode='r')
+        #self.fin = codecs.open(self.file_in, mode='r', encoding='utf-8')
         self.open_out(file_out)
         self.do_convert()
         self.fin.close()
@@ -121,7 +127,7 @@ class Converter:
 
     def close_out(self):
         self.fout.close()
-        
+
     def out(self, lines, eol=True):
         if isinstance(lines, (str, unicode)):
             lines = (lines,)
@@ -132,10 +138,10 @@ class Converter:
 
     def begin(self):
         self.out(u"BEGIN TRANSACTION;")
-        
+
     def commit(self):
         self.out(u"COMMIT;")
-        
+
     def create_table(self, table):
         if table.name == u'service': return
         self.out(table.image())
@@ -173,7 +179,7 @@ class Converter:
                     raise
         else:
             self.ins = line
-        
+
     def do_convert(self):
         tbl = None
         i,j = 0,0
@@ -225,20 +231,20 @@ class ConverterToSqlite(Converter):
     def close_out(self, commit=True):
         if commit: self.conn.commit()
         self.conn.close()
-        
+
     def begin(self):
         print "BEGIN"
         self.curs.execute("BEGIN")
-        
+
     def commit(self):
         print "COMMIT"
         self.curs.execute("COMMIT")
-        
+
     def create_table(self, table):
         if table.name == u'service': return
         print table.image()
         self.curs.execute(table.image())
-    
+
     def do_insert(self, query):
         try:
             self.curs.execute(query)
@@ -247,10 +253,13 @@ class ConverterToSqlite(Converter):
             raise
 
 
-fdump = u"upd-5part/backup/backup_ba.sql"
-fout = u"backup_ba_out.sql"
 
-c = Converter(fdump)
-#fout = u"backup_ba_out.db"
-#c = ConverterToSqlite(fdump)
-c.convert(fout)
+if __name__ == '__main__':
+
+    fdump = u"/home/termim/books/gen.lib.rus.ec/backup/upd-5part/backup/backup_ba.sql"
+    fout = u"backup_ba_out.sql"
+
+    c = Converter(fdump)
+    #fout = u"backup_ba_out.db"
+    #c = ConverterToSqlite(fdump)
+    c.convert(fout)
