@@ -1,0 +1,10 @@
+*~
+*.pyc
+*.pyo
+*.log
+.ropeproject/*
+.eric4project/*
+.eric5project/*
+build
+dist
+
