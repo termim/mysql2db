@@ -9,6 +9,54 @@ import os.path
 import codecs
 import re
 
+
+class Insert:
+
+    def __init__(self):
+        self.statements = []
+        self.tablenames = []
+        self.last = ''
+        self.sep = re.compile(r"([^\\]'|\d)[)],[(]")
+        self.match = re.compile("INSERT\s+INTO\s+`([^`]+)`\s+VALUES\s+[(]\s*(.*)", re.IGNORECASE).match
+
+
+    def next(self):
+        while self.statements:
+            table_idx, data = self.statements[0]
+            yield 'INSERT INTO "{}" VALUES ({});'.format(self.tablenames[table_idx], data)
+            self.statements.pop(0)
+
+
+    def feed(self, data):
+        if self.last:
+            data, self.last = self.last + data, ""
+        start = 0
+        m = self.match(data)
+        if m:
+            print m.group(1),m.span(1), m.span(2)
+            self.tablenames.append(m.group(1))
+            start = m.start(2)
+        self.feed_split(data, start)
+
+
+    def feed_split(self, data, start):
+        table_idx = len(self.tablenames) - 1
+        lst = self.sep.split(data[start:])
+        n, N = 0, len(lst)-1
+        while n < N:
+            #print n,n+1
+            l = lst[n] + lst[n+1]
+            self.statements.append((table_idx, l))
+            n += 2
+        last = lst[-1].strip()
+        if last.endswith(");"):
+            self.statements.append((table_idx, last[:-2]))
+        else:
+            self.last = lst[-1]
+
+
+
+
 regions = re.compile(r"(?P<non_literal>[^']+)|(?P<literal>'(?:[^']|(?:''))*')").finditer
 
 def parseSimpleString(s):
@@ -77,7 +125,15 @@ class Table:
         self.fields[name] = coldef.replace("unsigned", "")
         self.field_names.append(name)
 
+    _re_charset = re.compile(".*\s+(CHARACTER\s+SET\s+\w+)", re.IGNORECASE).match
+
     def add(self, l):
+        ci = l.lower().find(" comment ")
+        if ci > -1:
+            l = l[:ci] #+ ", --" + l[ci:]
+        m = self._re_charset(l)
+        if m:
+            l = l[:m.start(1)] + l[m.end(1):]
         if l[0] == '`':
             self.addcol(l)
         elif l.startswith(u"PRIMARY KEY"):
@@ -85,7 +141,7 @@ class Table:
             if m:
                 pk = m.group(1)
                 if pk in self.fields:
-                    if self.fields[pk].endswith("auto_increment"):
+                    if self.fields[pk].lower().endswith("auto_increment"):
                         self.fields[pk] = "integer not null primary key autoincrement"
                     else:
                         self.pk = pk
@@ -168,13 +224,14 @@ class Converter:
                 suffix = "'"
                 if i == lenl-1:
                     suffix = ""
-                x = self.Qsub(r"\1''",
+                X = self.Qsub(r"\1''",
                               self.Zsub(r"\1\\Z",
                                         x.replace(r'\"','"').replace(r"\'\'","''''"))).replace(r"\\\'","\\''")
                 try:
-                    self.do_insert(u'''INSERT INTO "%s" VALUES (%s%s);''' %(table_name, x, suffix))
+                    stmt = u'''INSERT INTO "%s" VALUES (%s%s);''' %(table_name, X, suffix)
+                    self.do_insert(stmt)
                 except:
-                    print "line=<%s>" % line
+                    print "stmt=<|%s|>" % stmt
                     print "x=<%s>" % x
                     raise
         else:
@@ -255,11 +312,39 @@ class ConverterToSqlite(Converter):
 
 
 if __name__ == '__main__':
-
-    fdump = u"/home/termim/books/gen.lib.rus.ec/backup/upd-5part/backup/backup_ba.sql"
-    fout = u"backup_ba_out.sql"
+    import gzip, re
+    ffdump = "/home2/termim/books/gen.lib.rus.ec/backup/upd-5part/backup/backup_ba.sql"
+    #ffdump = "/tmp/sql/libgenre.sql.gz"
+    #ffdump = "/tmp/sql/libgenres.sql.gz"
+    if ffdump.endswith(".gz"):
+        fdump = gzip.open(ffdump)
+    else:
+        fdump = open(ffdump)
+    fout = open(ffdump+".out", 'wb')
+    ins = Insert()
+    for line in fdump.readlines():
+        if ins.match(line):
+            ins.feed(line)
+            for stmt in ins.next():
+                fout.write(stmt)
+                fout.write('\n')
+        elif line.startswith("INSERT"):
+            print line[:100]
+            print ins.match(line)
+    fout.close()
+    sys.exit()
+    
+    fdump = "/tmp/sql/libavtors.sql"
+    fout = "/tmp/sql/libavtors.sqlite"
+    open(fdump, "wb").write(gzip.open("/tmp/sql/libavtors.sql.gz").read())
 
     c = Converter(fdump)
+    c.convert(fout + ".sql")
     #fout = u"backup_ba_out.db"
-    #c = ConverterToSqlite(fdump)
+    c = ConverterToSqlite(fdump)
     c.convert(fout)
+
+#(118134,'','','Журнал !№\'№;%:?*()_+ЪХ//,,/\\\\\\','','',0,'','','','','','','','','','','',0,''),(118136,'Василий','Юрьевич','Лещенко','','',0,'','','','','','','','','','','ru',0,'')
+#INSERT INTO "libavtors" VALUES (118134,'','','Журнал !№''№;%:?*()_+ЪХ//,,/\\\\'','','',0,'','','','','','','','','','','',0,'');
+#stmt=<|INSERT INTO "libavtors" VALUES (118134,'','','Журнал !№''№;%:?*()_+ЪХ//,,/\\\\'','','',0,'','','','','','','','','','','',0,'');|>
+#x=<118134,'','','Журнал !№\'№;%:?*()_+ЪХ//,,/\\\\\\','','',0,'','','','','','','','','','','',0,'>
