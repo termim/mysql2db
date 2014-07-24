@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-import sys
-
-reload(sys)
-sys.setdefaultencoding('utf8')
-del sys.setdefaultencoding
-
 import os.path
-import codecs
 import re
+from collections import OrderedDict
+import gzip
 
 
 class Insert:
@@ -20,11 +15,40 @@ class Insert:
         self.match = re.compile("INSERT\s+INTO\s+`([^`]+)`\s+VALUES\s+[(]\s*(.*)", re.IGNORECASE).match
 
 
+    def match_quote(self, m):
+        backsl = m.group(2)
+        q = "'"
+        if len(backsl) % 2:
+            backsl = backsl[:-1]
+            q = "''"
+        return m.group(1) + backsl + q
+
+
+    findquotes = re.compile("'").findall
+    re_quote = re.compile(r"([^\\]?)([\\]+)'")
+
     def next(self):
         while self.statements:
-            table_idx, data = self.statements[0]
-            yield 'INSERT INTO "{}" VALUES ({});'.format(self.tablenames[table_idx], data)
-            self.statements.pop(0)
+            n = 0
+            ll = ""
+            try:
+                while 1:
+                    table_idx, data = self.statements[n]
+                    l = data[:]
+                    l = self.re_quote.sub(self.match_quote, l)
+                    l = l.replace("\u2019", "''")
+                    n += 1
+                    ll += l
+                    if len(self.findquotes(ll)) % 2 == 0: break
+                    ll += "),("
+                yield 'INSERT INTO "{}" VALUES ({});'.format(self.tablenames[table_idx], ll)
+            except:
+                print 'c:',(data)
+                for i in range(min(5, len(self.statements))):
+                    print '%d:' %i, (self.statements[i][1])
+                raise
+            for _ in range(n):
+                self.statements.pop(0)
 
 
     def feed(self, data):
@@ -33,7 +57,6 @@ class Insert:
         start = 0
         m = self.match(data)
         if m:
-            print m.group(1),m.span(1), m.span(2)
             self.tablenames.append(m.group(1))
             start = m.start(2)
         self.feed_split(data, start)
@@ -44,7 +67,6 @@ class Insert:
         lst = self.sep.split(data[start:])
         n, N = 0, len(lst)-1
         while n < N:
-            #print n,n+1
             l = lst[n] + lst[n+1]
             self.statements.append((table_idx, l))
             n += 2
@@ -56,222 +78,217 @@ class Insert:
 
 
 
-
-regions = re.compile(r"(?P<non_literal>[^']+)|(?P<literal>'(?:[^']|(?:''))*')").finditer
-
-def parseSimpleString(s):
-    #s = s.replace(r"\'","''")
-    Qsub = re.compile(r"([^\\])\\'").sub
-    s = Qsub(r"\1''", s)
-    regions = []
-    fields = []
-    def mlen(seq):
-        n = 0
-        for s in seq:
-            if s[0] == "'":
-                n += 1
-            else:
-                n += s.count(',')-1
-
-    for match in regions(s):
-        non_literal, literal = match.groups()
-        if non_literal:
-            if non_literal.startswith('),('):
-                if regions:
-                    if mlen(regions[-1]) != mlen(fields): print "BADLEN1:",mlen(regions[-1]),mlen(fields),"\n",''.join(regions[-1]),"\n",''.join(fields)
-                regions.append(fields)
-                fields = []
-                if len(non_literal) > 3:
-                    fields = [non_literal[3:]]
-            else:
-                fields.append(non_literal)
-                if regions:
-                    if mlen(regions[-1]) < mlen(fields): print "BADLEN2:",mlen(regions[-1]),mlen(fields),"\n",''.join(regions[-1]),"\n",''.join(fields)
-        elif literal:
-            if len(fields) >= n and n>0: print "literal:",literal
-            fields.append(literal)
-    if regions:
-        if mlen(regions[-1]) < mlen(fields): print "BADLEN3:",mlen(regions[-1]),mlen(fields),"\n",''.join(regions[-1]),"\n",''.join(fields)
-    regions.append(fields)
-
-    return regions
-
-def parseString(s):
-    if s.find(r"\'") < 0:
-        return parseSimpleString(s)
-    if s.find(r"\\'") < 0:
-        return parseSimpleString(s.replace(r"\'","''"))
-    return [[y.replace("||||||||||",r"\\") for y in x] for x in parseSimpleString(s.replace(r"\\","||||||||||").replace(r"\'","''"))]
-
 class Table:
 
-    def __init__(self, s):
-        cm = re.match(u"^CREATE TABLE\s+`(\w+)`\s+[(]", s)
-        if cm:
-            self.name = cm.group(1)
-        else:
-            raise Exception, "Unknown create: <%s>" % s
-        self.field_names = []
-        self.fields = {}
-        self.pk = None
+    creatematch = re.compile("^CREATE TABLE\s+`(\w+)`\s+[(]", re.IGNORECASE).match
 
-    def addcol(self, l):
-        name,coldef = l[1:].split('`')
-        try:
-            i = coldef.index(u" on update")
-            coldef = coldef[1:i]
-        except ValueError:
-            pass
-        self.fields[name] = coldef.replace("unsigned", "")
-        self.field_names.append(name)
+    def __init__(self, s):
+        #print s
+        cm = self.creatematch(s)
+        if not cm:
+            raise Exception("Unknown create: <%s>" % s)
+        self.name = cm.group(1)
+        self.columns = OrderedDict()
+        self.pk = None
+        self.keys = {}
+        self.done = False
+
+
+    re_sub_length = re.compile("([(]\d+[)])").sub
+    keymatch = re.compile(
+        "(?P<qual>PRIMARY|UNIQUE|FOREIGN)?"
+        "\s*(?:INDEX|KEY)"
+        "\s+(?P<keyname>`\w+`)?"
+        "(?:\s+USING BTREE)?"
+        "[^(]*(?:[(]`)(?P<columns>[^)]+)(?:`[)])"
+        , re.IGNORECASE).search
+
+    def match_key(self, line):
+        l = self.re_sub_length("", line)
+        m = self.keymatch(l)
+        if not m:
+            return
+        qual, keyname, columns = m.groups()
+        keyname = keyname.replace('`', '"') if keyname else ''
+        columns = '"{}"'.format(columns.replace('`', '"'))
+
+        #stmt = 'CREATE INDEX test1_id_index ON test1 (id);'
+        self.keys[keyname] = qual, columns
+        if qual and qual.upper() == "PRIMARY":
+            self.pk = keyname
+        return (keyname, qual, columns)
+
+
+    colmatch = re.compile(
+        "\s*`(?P<colname>\w+)`"
+        "\s+(?P<coltype>[\w]+)"
+        "\s*(?:[(]?)(?P<collen>[\d,]+)?(?:[)]?)"
+        "\s*(?P<rest>.*)", re.IGNORECASE).match
+    notnull = re.compile("NOT NULL", re.IGNORECASE).search
+    autoincrement = re.compile("AUTO_INCREMENT", re.IGNORECASE).search
+    comment = re.compile("(COMMENT\s+'[^']*')", re.IGNORECASE).search
+    primarykey = re.compile("PRIMARY\s+KEY\s*([(][^)]+[)])*", re.IGNORECASE).search
+
+    typemap = {
+        'TINYINT': 'INTEGER', 'SMALLINT': 'INTEGER', 'MEDIUMINT': 'INTEGER', 'INT': 'INTEGER', 'INTEGER': 'INTEGER', 'BIGINT': 'INTEGER',
+        'REAL': 'REAL', 'DOUBLE': 'DOUBLE', 'FLOAT': 'FLOAT',
+        'DECIMAL': 'NUMERIC',
+        'DATE': 'DATE', 'TIME': 'TIME', 'TIMESTAMP': 'TIMESTAMP', 'DATETIME': 'DATETIME',
+        'YEAR': 'INTEGER',
+        'CHAR': 'TEXT', 'VARCHAR': 'TEXT', 'TINYTEXT': 'TEXT', 'TEXT': 'TEXT', 'MEDIUMTEXT': 'TEXT', 'LONGTEXT': 'TEXT',
+        'BINARY': 'BLOB', 'VARBINARY': 'BLOB', 'TINYBLOB': 'BLOB', 'BLOB': 'BLOB', 'MEDIUMBLOB': 'BLOB', 'LONGBLOB': 'BLOB',
+        'ENUM': 'TEXT',
+        'SET': 'TEXT',
+    }
+
+    def match_col(self, line):
+        l = line#self.re_sub_length("", line)
+        m = self.colmatch(l)
+        if not m: return
+        colname, coltype, collen, rest = m.groups()
+        print (colname, coltype, collen, rest)
+        coltype = self.typemap[coltype.upper()]
+        self.columns[colname] = '"{}" {}'.format(colname, coltype)
+        return colname, coltype, collen, rest
+
+
+    re_engine = re.compile("[)] ENGINE=", re.IGNORECASE).search
+
+    def match_end(self, line):
+        self.done = self.re_engine(line) is not None
+        return self.done
+
 
     _re_charset = re.compile(".*\s+(CHARACTER\s+SET\s+\w+)", re.IGNORECASE).match
 
-    def add(self, l):
-        ci = l.lower().find(" comment ")
-        if ci > -1:
-            l = l[:ci] #+ ", --" + l[ci:]
-        m = self._re_charset(l)
-        if m:
-            l = l[:m.start(1)] + l[m.end(1):]
-        if l[0] == '`':
-            self.addcol(l)
-        elif l.startswith(u"PRIMARY KEY"):
-            m = re.match(u"^PRIMARY KEY\s+.*[(]`(\w+)`[)]", l)
-            if m:
-                pk = m.group(1)
-                if pk in self.fields:
-                    if self.fields[pk].lower().endswith("auto_increment"):
-                        self.fields[pk] = "integer not null primary key autoincrement"
-                    else:
-                        self.pk = pk
-            else:
-                raise Exception, "Unknown primary key: <%s>" % l
-        elif l.lower().startswith(u"fulltext key"):
-            pass
-        elif l.startswith(u") ENGINE="):
+    def feed(self, line):
+        if self.done:
+            raise Exception("Already done")
+
+        for match in (self.match_col, self.match_key,):
+            try:
+                if match(line): return
+            except:
+                print "|%s|" % line
+                raise
+
+        if self.match_end(line):
             return True
-        return False
+
+        raise Exception("Unknown line: <%s>" % line)
+
 
     def image(self):
-        fields = ['"%s" %s' % (n,self.fields[n]) for n in self.field_names]
-        if self.pk:
-            fields.append('PRIMARY KEY ("%s")' % self.pk)
-        s = u'CREATE TABLE "%s" (\n%s\n);' % (self.name,
-                                         ',\n'.join(fields))
+        s = 'CREATE TABLE "{}" (\n{}\n);'.format(
+            self.name,
+            ',\n'.join(self.columns.values()))
         return s
+
+
 
 class Converter:
 
     def __init__(self, file_in):
         self.file_in = file_in
-        self.insert_match = re.compile(u"^INSERT INTO `(.*)` VALUES [(](.*)[)];$").match
+        self.insert_match = re.compile("^INSERT INTO `(.*)` VALUES [(](.*)[)];$").match
         self.Zsub = re.compile(r"([^\\])\\Z").sub
         self.Qsub = re.compile(r"([^\\])\\'").sub
-        self.ins = ''
+        self.ins = Insert()
+
 
     def convert(self, file_out):
-        self.fin = open(self.file_in, mode='r')
-        #self.fin = codecs.open(self.file_in, mode='r', encoding='utf-8')
+        if self.file_in.endswith(".gz"):
+            self.fin = gzip.open(self.file_in)
+        else:
+            self.fin = open(self.file_in)
         self.open_out(file_out)
         self.do_convert()
         self.fin.close()
         self.close_out()
 
+
     def open_out(self, file_out):
-        self.fout = codecs.open(file_out, mode='w', encoding='utf-8')
+        self.fout = open(file_out, 'w')#codecs.open(file_out, mode='w', encoding='utf-8')
+
 
     def close_out(self):
         self.fout.close()
 
+
     def out(self, lines, eol=True):
-        if isinstance(lines, (str, unicode)):
+        if isinstance(lines, (str,)):
             lines = (lines,)
         for line in lines:
             self.fout.write(line)
             if eol:
                 self.fout.write("\n")
 
+
     def begin(self):
-        self.out(u"BEGIN TRANSACTION;")
+        self.out("BEGIN TRANSACTION;")
+
 
     def commit(self):
-        self.out(u"COMMIT;")
+        self.out("COMMIT;")
+
 
     def create_table(self, table):
-        if table.name == u'service': return
+        if table.name == 'service': return
         self.out(table.image())
+
 
     def do_insert(self, query):
         self.out(query)
 
+
     def insert(self, line):
-        if self.ins:
-            line = self.ins + line
-            self.ins = ''
-        m = self.insert_match(line)
-        Rre = re.compile("['][)],[(]").split
-        if m:
-            table_name, data = m.groups()
-            if table_name == u'service': return
-            #data = self.Qsub(r"\1''",
-            #                 self.Zsub(r"\1\\Z",
-            #                           data.replace(r'\"','"').replace(r"\'\'","''''"))).replace(r"\\\'","\\''")
-            #for x in data.split(u"),("):
-            l = Rre(data)
-            lenl = len(l)
-            for i,x in enumerate(l):
-                suffix = "'"
-                if i == lenl-1:
-                    suffix = ""
-                X = self.Qsub(r"\1''",
-                              self.Zsub(r"\1\\Z",
-                                        x.replace(r'\"','"').replace(r"\'\'","''''"))).replace(r"\\\'","\\''")
-                try:
-                    stmt = u'''INSERT INTO "%s" VALUES (%s%s);''' %(table_name, X, suffix)
-                    self.do_insert(stmt)
-                except:
-                    print "stmt=<|%s|>" % stmt
-                    print "x=<%s>" % x
-                    raise
-        else:
-            self.ins = line
+        self.ins.feed(line)
+        for stmt in self.ins.next():
+            try:
+                self.do_insert(stmt)
+            except:
+                print ("stmt=<|%s|>" % stmt)
+                raise
+
 
     def do_convert(self):
         tbl = None
         i,j = 0,0
         for l in self.fin:
+            #l = l.decode()
             i += 1
             l = l.strip()
             if not l:
                 continue
-            if l.startswith(u"INSERT INTO"):
-                if tbl: raise Exception, "Parse error <%s>" % l
+            if l.startswith("INSERT INTO"):
+                if tbl: raise Exception("Parse error <%s>" % l)
                 self.insert(l)
                 j += 1
-                print "-- ",i,j,len(l)
-            elif (l.startswith(u"/*") or
-                  l.startswith(u"--") or
-                  l.startswith(u"SET ") or
-                  l.startswith(u"USE ") or
-                  l.startswith(u"DROP TABLE ") or
-                  l.startswith(u"CREATE DATABASE ")
+                print ("-- ",i,j,len(l))
+            elif (l.startswith("/*") or
+                  l.startswith("--") or
+                  l.startswith("SET ") or
+                  l.startswith("USE ") or
+                  l.startswith("DROP TABLE ") or
+                  l.startswith("CREATE DATABASE ")
                   ):
-                if tbl: raise Exception, "Parse error <%s>" % l
-            elif l.startswith(u"LOCK TABLES "):
-                if tbl: raise Exception, "Parse error <%s>" % l
+                if tbl: raise Exception("Parse error <%s>" % l)
+            elif l.startswith("LOCK TABLES "):
+                if tbl: raise Exception("Parse error <%s>" % l)
                 self.begin()
-            elif l.startswith(u"UNLOCK TABLES"):
-                if tbl: raise Exception, "Parse error <%s>" % l
+            elif l.startswith("UNLOCK TABLES"):
+                if tbl: raise Exception("Parse error <%s>" % l)
                 self.commit()
-            elif l.startswith(u"CREATE TABLE "):
+            elif l.startswith("CREATE TABLE "):
                 tbl = Table(l)
             elif tbl:
-                if tbl.add(l.strip(',')):
+                if tbl.feed(l):
                     self.create_table(tbl)
                     tbl = None
             else:
                 self.insert(l)
+
+
 
 class ConverterToSqlite(Converter):
 
@@ -285,66 +302,31 @@ class ConverterToSqlite(Converter):
         self.curs.execute("PRAGMA synchronous=0")
         self.curs.execute("PRAGMA journal_mode=MEMORY")
 
+
     def close_out(self, commit=True):
         if commit: self.conn.commit()
         self.conn.close()
 
+
     def begin(self):
-        print "BEGIN"
+        print ("BEGIN")
         self.curs.execute("BEGIN")
 
+
     def commit(self):
-        print "COMMIT"
+        print ("COMMIT")
         self.curs.execute("COMMIT")
 
+
     def create_table(self, table):
-        if table.name == u'service': return
-        print table.image()
+        #if table.name == 'service': return
+        print (table.image())
         self.curs.execute(table.image())
+
 
     def do_insert(self, query):
         try:
             self.curs.execute(query)
         except:
-            print query
+            print (query)
             raise
-
-
-
-if __name__ == '__main__':
-    import gzip, re
-    ffdump = "/home2/termim/books/gen.lib.rus.ec/backup/upd-5part/backup/backup_ba.sql"
-    #ffdump = "/tmp/sql/libgenre.sql.gz"
-    #ffdump = "/tmp/sql/libgenres.sql.gz"
-    if ffdump.endswith(".gz"):
-        fdump = gzip.open(ffdump)
-    else:
-        fdump = open(ffdump)
-    fout = open(ffdump+".out", 'wb')
-    ins = Insert()
-    for line in fdump.readlines():
-        if ins.match(line):
-            ins.feed(line)
-            for stmt in ins.next():
-                fout.write(stmt)
-                fout.write('\n')
-        elif line.startswith("INSERT"):
-            print line[:100]
-            print ins.match(line)
-    fout.close()
-    sys.exit()
-    
-    fdump = "/tmp/sql/libavtors.sql"
-    fout = "/tmp/sql/libavtors.sqlite"
-    open(fdump, "wb").write(gzip.open("/tmp/sql/libavtors.sql.gz").read())
-
-    c = Converter(fdump)
-    c.convert(fout + ".sql")
-    #fout = u"backup_ba_out.db"
-    c = ConverterToSqlite(fdump)
-    c.convert(fout)
-
-#(118134,'','','Журнал !№\'№;%:?*()_+ЪХ//,,/\\\\\\','','',0,'','','','','','','','','','','',0,''),(118136,'Василий','Юрьевич','Лещенко','','',0,'','','','','','','','','','','ru',0,'')
-#INSERT INTO "libavtors" VALUES (118134,'','','Журнал !№''№;%:?*()_+ЪХ//,,/\\\\'','','',0,'','','','','','','','','','','',0,'');
-#stmt=<|INSERT INTO "libavtors" VALUES (118134,'','','Журнал !№''№;%:?*()_+ЪХ//,,/\\\\'','','',0,'','','','','','','','','','','',0,'');|>
-#x=<118134,'','','Журнал !№\'№;%:?*()_+ЪХ//,,/\\\\\\','','',0,'','','','','','','','','','','',0,'>
