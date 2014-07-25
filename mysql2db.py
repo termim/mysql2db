@@ -197,9 +197,9 @@ class Converter:
 
     def convert(self, file_out):
         if self.file_in.endswith(".gz"):
-            self.fin = gzip.open(self.file_in)
+            self.fin = gzip.open(self.file_in, "rt", encoding='utf-8')
         else:
-            self.fin = open(self.file_in)
+            self.fin = open(self.file_in, encoding='utf-8')
         self.open_out(file_out)
         self.do_convert()
         self.fin.close()
