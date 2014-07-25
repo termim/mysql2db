@@ -43,9 +43,9 @@ class Insert:
                     ll += "),("
                 yield 'INSERT INTO "{}" VALUES ({});'.format(self.tablenames[table_idx], ll)
             except:
-                print 'c:',(data)
+                print('c:',(data))
                 for i in range(min(5, len(self.statements))):
-                    print '%d:' %i, (self.statements[i][1])
+                    print('%d:' %i, (self.statements[i][1]))
                 raise
             for _ in range(n):
                 self.statements.pop(0)
@@ -83,7 +83,6 @@ class Table:
     creatematch = re.compile("^CREATE TABLE\s+`(\w+)`\s+[(]", re.IGNORECASE).match
 
     def __init__(self, s):
-        #print s
         cm = self.creatematch(s)
         if not cm:
             raise Exception("Unknown create: <%s>" % s)
@@ -169,7 +168,7 @@ class Table:
             try:
                 if match(line): return
             except:
-                print "|%s|" % line
+                print("|%s|" % line)
                 raise
 
         if self.match_end(line):
