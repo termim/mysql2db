@@ -36,8 +36,8 @@ class TestInsert(unittest.TestCase):
         fmt = "INSERT INTO `mytable` VALUES {};"
         values = "(1,2,3,4)"
         stmt = fmt.format(values)
-        self.ins.feed(stmt[:len(stmt)/2])
-        self.ins.feed(stmt[len(stmt)/2:])
+        self.ins.feed(stmt[:int(len(stmt)/2)])
+        self.ins.feed(stmt[int(len(stmt)/2):])
         lst = list(self.ins.next())
         self.assertEqual(1, len(lst))
         self.assertEqual('INSERT INTO "mytable" VALUES (1,2,3,4);', lst[0])
@@ -68,8 +68,8 @@ class TestInsert(unittest.TestCase):
         fmt = "INSERT INTO `mytable` VALUES {};"
         values = "(1,'a 2001(3),(4), b',4)"
         stmt = fmt.format(values)
-        self.ins.feed(stmt[:len(stmt)/2])
-        self.ins.feed(stmt[len(stmt)/2:])
+        self.ins.feed(stmt[:int(len(stmt)/2)])
+        self.ins.feed(stmt[int(len(stmt)/2):])
         lst = list(self.ins.next())
         self.assertEqual('''INSERT INTO "mytable" VALUES (1,'a 2001(3),(4), b',4);''', lst[0])
         self.assertEqual(1, len(lst), lst)
