@@ -145,7 +145,7 @@ class Table:
         m = self.colmatch(l)
         if not m: return
         colname, coltype, collen, rest = m.groups()
-        print (colname, coltype, collen, rest)
+        #print (colname, coltype, collen, rest)
         coltype = self.typemap[coltype.upper()]
         self.columns[colname] = '"{}" {}'.format(colname, coltype)
         return colname, coltype, collen, rest
