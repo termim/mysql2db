@@ -93,6 +93,14 @@ class TestInsert(unittest.TestCase):
         self.assertEqual(lst[0], r"""INSERT INTO "mytable" VALUES (1,'\\''\\''qwerty\\''\\''',8);""")
 
 
+    def test_double_quote(self):
+        fmt = "INSERT INTO `mytable` VALUES ({});"
+        values = r"1,'\"qwerty\"',8"
+        self.ins.feed(fmt.format(values))
+        lst = list(self.ins.next())
+        self.assertEqual(lst[0], 'INSERT INTO "mytable" VALUES (1,\'"qwerty"\',8);')
+
+
     def test_quote_recursive(self):
         fmt = "INSERT INTO `mytable` VALUES {};"
         values = r"(1,'\\\\\\\'qwerty\\\\\\\'',8)"

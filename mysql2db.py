@@ -37,6 +37,7 @@ class Insert:
                     l = data[:]
                     l = self.re_quote.sub(self.match_quote, l)
                     l = l.replace("\u2019", "''")
+                    l = l.replace(r'\"', '"')
                     n += 1
                     ll += l
                     if len(self.findquotes(ll)) % 2 == 0: break
