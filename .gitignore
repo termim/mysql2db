@@ -3,8 +3,8 @@
 *.pyo
 *.log
 .ropeproject/*
-.eric4project/*
-.eric5project/*
+.eric?project/*
+.issues
 build
 dist
 
