@@ -197,19 +197,23 @@ class Converter:
         self.ins = Insert()
 
 
-    def convert(self, file_out):
+    def convert(self, file_out, overwrite=False):
         if self.file_in.endswith(".gz"):
             self.fin = gzip.open(self.file_in)
         else:
             self.fin = open(self.file_in)
-        self.open_out(file_out)
+        self.open_out(file_out, overwrite)
         self.do_convert()
         self.fin.close()
         self.close_out()
 
 
-    def open_out(self, file_out):
-        self.fout = open(file_out, 'w')#codecs.open(file_out, mode='w', encoding='utf-8')
+    def open_out(self, file_out, overwrite=False):
+        if os.path.exists(file_out) and overwrite:
+            os.remove(file_out)
+            self.fout = open(file_out, 'w')
+        else:
+            self.fout = open(file_out, 'a')
 
 
     def close_out(self):
@@ -293,7 +297,7 @@ class Converter:
 
 class ConverterToSqlite(Converter):
 
-    def open_out(self, dbfile, overwrite=True):
+    def open_out(self, dbfile, overwrite=False):
         import sqlite3
         if os.path.exists(dbfile) and overwrite:
             os.remove(dbfile)
