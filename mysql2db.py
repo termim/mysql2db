@@ -84,7 +84,6 @@ class Table:
     creatematch = re.compile("^CREATE TABLE\s+`(\w+)`\s+[(]", re.IGNORECASE).match
 
     def __init__(self, s):
-        #print s
         cm = self.creatematch(s)
         if not cm:
             raise Exception("Unknown create: <%s>" % s)
@@ -147,7 +146,7 @@ class Table:
         m = self.colmatch(l)
         if not m: return
         colname, coltype, collen, rest = m.groups()
-        print (colname, coltype, collen, rest)
+        #print (colname, coltype, collen, rest)
         coltype = self.typemap[coltype.upper()]
         self.columns[colname] = '"{}" {}'.format(colname, coltype)
         return colname, coltype, collen, rest
@@ -195,6 +194,7 @@ class Converter:
         self.Zsub = re.compile(r"([^\\])\\Z").sub
         self.Qsub = re.compile(r"([^\\])\\'").sub
         self.ins = Insert()
+        self.verbose = False
 
 
     def convert(self, file_out, overwrite=False):
@@ -258,16 +258,17 @@ class Converter:
 
     def do_convert(self):
         tbl = None
-        i,j = 0,0
+        line_number,insert_number = 0,0
         for l in self.fin:
-            i += 1
+            line_number += 1
             if not l:
                 continue
             if l.startswith("INSERT INTO"):
                 if tbl: raise Exception("Parse error <%s>" % l)
                 self.insert(l)
-                j += 1
-                print ("-- ",i,j,len(l))
+                if self.verbose:
+                    insert_number += 1
+                    print ("-- ",line_number,insert_number,len(l))
             elif (l.startswith("/*") or
                   l.startswith("--") or
                   l.startswith("SET ") or
@@ -312,18 +313,21 @@ class ConverterToSqlite(Converter):
 
 
     def begin(self):
-        print ("BEGIN")
+        if self.verbose:
+            print ("BEGIN")
         self.curs.execute("BEGIN")
 
 
     def commit(self):
-        print ("COMMIT")
+        if self.verbose:
+            print ("COMMIT")
         self.curs.execute("COMMIT")
 
 
     def create_table(self, table):
         #if table.name == 'service': return
-        print (table.image())
+        if self.verbose:
+            print (table.image())
         self.curs.execute(table.image())
 
 
