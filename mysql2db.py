@@ -12,7 +12,7 @@ class Insert:
         self.tablenames = []
         self.last = ''
         self.sep = re.compile(r"([^\\]'|\d)[)],[(]")
-        self.match = re.compile("INSERT\s+INTO\s+`([^`]+)`\s+VALUES\s+[(]\s*(.*)", re.IGNORECASE).match
+        self.match_insert = re.compile("\s*INSERT\s+INTO\s+`([^`]+)`\s+VALUES\s+[(]\s*(.*)", re.IGNORECASE).match
 
 
     def match_quote(self, m):
@@ -56,7 +56,7 @@ class Insert:
         if self.last:
             data, self.last = self.last + data, ""
         start = 0
-        m = self.match(data)
+        m = self.match_insert(data)
         if m:
             self.tablenames.append(m.group(1))
             start = m.start(2)
@@ -260,9 +260,7 @@ class Converter:
         tbl = None
         i,j = 0,0
         for l in self.fin:
-            #l = l.decode()
             i += 1
-            l = l.strip()
             if not l:
                 continue
             if l.startswith("INSERT INTO"):
