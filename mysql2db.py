@@ -200,6 +200,8 @@ class MySqlDumpReader(object):
         self.ins = Insert()
         self.tables = []
         self.verbose = False
+        self.skip_schema = False
+        self.schema_only = False
 
 
     def convert(self, file_in, file_out, overwrite=False):
@@ -254,7 +256,8 @@ class MySqlDumpReader(object):
                 continue
             if l.startswith("INSERT INTO"):
                 if tbl: raise Exception("Parse error <%s>" % l)
-                self.insert(l)
+                if not self.schema_only:
+                    self.insert(l)
                 if self.verbose:
                     insert_number += 1
                     print ("-- ",line_number,insert_number,len(l))
@@ -268,15 +271,18 @@ class MySqlDumpReader(object):
                 if tbl: raise Exception("Parse error <%s>" % l)
             elif l.startswith("LOCK TABLES "):
                 if tbl: raise Exception("Parse error <%s>" % l)
-                self.begin()
+                if not self.schema_only:
+                    self.begin()
             elif l.startswith("UNLOCK TABLES"):
                 if tbl: raise Exception("Parse error <%s>" % l)
-                self.commit()
+                if not self.schema_only:
+                    self.commit()
             elif l.startswith("CREATE TABLE "):
                 tbl = Table(l)
             elif tbl:
                 if tbl.feed(l):
-                    self.create_table(tbl)
+                    if not self.skip_schema:
+                        self.create_table(tbl)
                     self.tables.append(tbl)
                     tbl = None
             else:
