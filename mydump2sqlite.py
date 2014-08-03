@@ -2,7 +2,7 @@
 
 import sys
 
-from mysql2db import ConverterToSqlite
+from mysql2db import MySqlToSqlite
 
 
 
@@ -13,5 +13,5 @@ if len(sys.argv) != 3:
 infile = sys.argv[1]
 outfile = sys.argv[2]
 
-c = ConverterToSqlite(infile)
-c.convert(outfile)
+c = MySqlToSqlite()
+c.convert(infile, outfile)

@@ -87,6 +87,7 @@ class Table:
         cm = self.creatematch(s)
         if not cm:
             raise Exception("Unknown create: <%s>" % s)
+        self.src = [s]
         self.name = cm.group(1)
         self.columns = OrderedDict()
         self.pk = None
@@ -165,6 +166,8 @@ class Table:
         if self.done:
             raise Exception("Already done")
 
+        self.src.append(line)
+
         for match in (self.match_col, self.match_key,):
             try:
                 if match(line): return
@@ -185,75 +188,61 @@ class Table:
         return s
 
 
+    def source(self):
+        return "".join(self.src)
 
-class Converter:
 
-    def __init__(self, file_in):
-        self.file_in = file_in
+
+class MySqlDumpReader(object):
+
+    def __init__(self):
         self.insert_match = re.compile("^INSERT INTO `(.*)` VALUES [(](.*)[)];$").match
-        self.Zsub = re.compile(r"([^\\])\\Z").sub
-        self.Qsub = re.compile(r"([^\\])\\'").sub
         self.ins = Insert()
+        self.tables = []
         self.verbose = False
 
 
-    def convert(self, file_out, overwrite=False):
-        if self.file_in.endswith(".gz"):
-            self.fin = gzip.open(self.file_in)
-        else:
-            self.fin = open(self.file_in)
+    def convert(self, file_in, file_out, overwrite=False):
+        self.open_in(file_in)
         self.open_out(file_out, overwrite)
         self.do_convert()
         self.fin.close()
         self.close_out()
 
 
-    def open_out(self, file_out, overwrite=False):
-        if os.path.exists(file_out) and overwrite:
-            os.remove(file_out)
-            self.fout = open(file_out, 'w')
+    def open_in(self, file_in):
+        if file_in.endswith(".gz"):
+            self.fin = gzip.open(file_in)
         else:
-            self.fout = open(file_out, 'a')
+            self.fin = open(file_in)
 
 
-    def close_out(self):
-        self.fout.close()
+    def open_out(self, dbfile, overwrite=False):
+        pass
 
 
-    def out(self, lines, eol=True):
-        if isinstance(lines, (str,)):
-            lines = (lines,)
-        for line in lines:
-            self.fout.write(line)
-            if eol:
-                self.fout.write("\n")
+    def close_out(self, commit=True):
+        pass
 
 
     def begin(self):
-        self.out("BEGIN TRANSACTION;")
+        pass
 
 
     def commit(self):
-        self.out("COMMIT;")
+        pass
 
 
     def create_table(self, table):
-        if table.name == 'service': return
-        self.out(table.image())
-
-
-    def do_insert(self, query):
-        self.out(query)
+        pass
 
 
     def insert(self, line):
-        self.ins.feed(line)
-        for stmt in self.ins.next():
-            try:
-                self.do_insert(stmt)
-            except:
-                print ("stmt=<|%s|>" % stmt)
-                raise
+        pass
+
+
+    def do_insert(self, query):
+        pass
 
 
     def do_convert(self):
@@ -288,13 +277,87 @@ class Converter:
             elif tbl:
                 if tbl.feed(l):
                     self.create_table(tbl)
+                    self.tables.append(tbl)
                     tbl = None
             else:
                 self.insert(l)
 
 
 
-class ConverterToSqlite(Converter):
+class MySqlDumpToSqlDumpBase(MySqlDumpReader):
+
+
+    def open_out(self, file_out, overwrite=False):
+        if os.path.exists(file_out) and overwrite:
+            os.remove(file_out)
+            self.fout = open(file_out, 'w')
+        else:
+            self.fout = open(file_out, 'a')
+
+
+    def close_out(self):
+        self.fout.close()
+
+
+    def out(self, lines, eol=True):
+        if isinstance(lines, (str,)):
+            lines = (lines,)
+        for line in lines:
+            self.fout.write(line)
+            if eol:
+                self.fout.write("\n")
+
+
+
+class MySqlDumpToSqlSchema(MySqlDumpToSqlDumpBase):
+
+
+    def convert(self, file_in, file_out, overwrite=False, convert_schema=True):
+        self.convert_schema = convert_schema
+        super(MySqlDumpToSqlSchema, self).convert(file_in, file_out, overwrite)
+
+
+    def create_table(self, table):
+        if table.name == 'service': return
+        if self.convert_schema:
+            self.out(table.image())
+        else:
+            self.out(table.source())
+
+
+
+class MySqlDumpToSqlDump(MySqlDumpToSqlDumpBase):
+
+
+    def begin(self):
+        self.out("BEGIN TRANSACTION;")
+
+
+    def commit(self):
+        self.out("COMMIT;")
+
+
+    def create_table(self, table):
+        if table.name == 'service': return
+        self.out(table.image())
+
+
+    def do_insert(self, query):
+        self.out(query)
+
+
+    def insert(self, line):
+        self.ins.feed(line)
+        for stmt in self.ins.next():
+            try:
+                self.do_insert(stmt)
+            except:
+                print ("stmt=<|%s|>" % stmt)
+                raise
+
+
+
+class MySqlToSqlite(MySqlDumpToSqlDump):
 
     def open_out(self, dbfile, overwrite=False):
         import sqlite3
