@@ -2,8 +2,20 @@
 
 from os.path import *
 import argparse
+from time import time
+from datetime import timedelta
 
 from mysql2db import *
+
+
+class Timer:
+    def __init__(self):
+        self.start = self.prev = time()
+
+    def next(self, msg):
+        dt = timedelta(seconds = time() - self.prev)
+        print ("{}: {}".format(msg, str(dt)))
+        self.prev = time()
 
 
 
@@ -12,18 +24,22 @@ def convert2sql(args):
     if args.extract_schema_only:
         args.schema_only = True
     for f in args.infiles:
-        print f
+        print ("{} ...".format(f))
+        timer = Timer()
         c.convert(f, args.output, overwrite=False, verbose=args.verbose,
                   skip_schema=args.data_only, schema_only=args.schema_only,
                   convert_schema=not args.extract_schema_only)
+        timer.next(f)
 
 
 def convert2sqlite(args):
     c = MySqlToSqlite()
     for f in args.infiles:
-        print f
+        print ("{} ...".format(f))
+        timer = Timer()
         c.convert(f, args.output, overwrite=False, verbose=args.verbose,
                   skip_schema=args.data_only, schema_only=args.schema_only)
+        timer.next(f)
 
 
 def main():
@@ -61,7 +77,10 @@ def main():
         parser.exit(1)
 
     print args
-    parser.exit(args.func(args))
+    timer = Timer()
+    rc = args.func(args)
+    timer.next("Total")
+    parser.exit(rc)
 
 
 
