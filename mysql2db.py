@@ -202,9 +202,14 @@ class MySqlDumpReader(object):
         self.verbose = False
         self.skip_schema = False
         self.schema_only = False
+        self.convert_schema = True
 
 
-    def convert(self, file_in, file_out, overwrite=False):
+    def convert(self, file_in, file_out, overwrite=False, skip_schema=False, schema_only=False, verbose=False, convert_schema=True):
+        self.verbose = verbose
+        self.skip_schema = skip_schema
+        self.schema_only = schema_only
+        self.convert_schema = convert_schema
         self.open_in(file_in)
         self.open_out(file_out, overwrite)
         self.do_convert()
@@ -290,7 +295,7 @@ class MySqlDumpReader(object):
 
 
 
-class MySqlDumpToSqlDumpBase(MySqlDumpReader):
+class MySqlDumpToSqlDump(MySqlDumpReader):
 
 
     def open_out(self, file_out, overwrite=False):
@@ -314,15 +319,6 @@ class MySqlDumpToSqlDumpBase(MySqlDumpReader):
                 self.fout.write("\n")
 
 
-
-class MySqlDumpToSqlSchema(MySqlDumpToSqlDumpBase):
-
-
-    def convert(self, file_in, file_out, overwrite=False, convert_schema=True):
-        self.convert_schema = convert_schema
-        super(MySqlDumpToSqlSchema, self).convert(file_in, file_out, overwrite)
-
-
     def create_table(self, table):
         if table.name == 'service': return
         if self.convert_schema:
@@ -331,21 +327,12 @@ class MySqlDumpToSqlSchema(MySqlDumpToSqlDumpBase):
             self.out(table.source())
 
 
-
-class MySqlDumpToSqlDump(MySqlDumpToSqlDumpBase):
-
-
     def begin(self):
         self.out("BEGIN TRANSACTION;")
 
 
     def commit(self):
         self.out("COMMIT;")
-
-
-    def create_table(self, table):
-        if table.name == 'service': return
-        self.out(table.image())
 
 
     def do_insert(self, query):
