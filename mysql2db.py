@@ -81,7 +81,7 @@ class Insert:
 
 class Table:
 
-    creatematch = re.compile("^CREATE TABLE\s+`(\w+)`\s+[(]", re.IGNORECASE).match
+    creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?", re.IGNORECASE).match
 
     def __init__(self, s):
         cm = self.creatematch(s)

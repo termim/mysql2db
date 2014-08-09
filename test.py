@@ -144,6 +144,16 @@ class TestTable(unittest.TestCase):
 
     def test_create(self):
         self.assertEqual(self.tbl.name, 'my_table')
+        tbl = Table("CREATE  TABLE     `tbl_name`")
+        self.assertEqual(tbl.name, 'tbl_name')
+        tbl = Table("CREATE TEMPORARY TABLE `tbl_name`")
+        self.assertEqual(tbl.name, 'tbl_name')
+        tbl = Table("CREATE   TABLE IF NOT EXISTS `tbl_name`")
+        self.assertEqual(tbl.name, 'tbl_name')
+        tbl = Table("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name`")
+        self.assertEqual(tbl.name, 'tbl_name')
+        tbl = Table("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name` (")
+        self.assertEqual(tbl.name, 'tbl_name')
 
 
     def test_re_colmatch(self):
