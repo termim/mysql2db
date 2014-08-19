@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from mysql2db import Insert, Table
+from mysql2db import Insert, Table, Column
 
 
 
@@ -131,6 +131,443 @@ class TestInsert(unittest.TestCase):
         self.assertEqual(r"182,'''Та сторона''','','Альманах','','',0,'','','','\0','','','','','','','',47560,''", r)
 
 
+class TestColumn(unittest.TestCase):
+
+
+    def test_BIT(self):
+        col = Column.match("`colname` BIT,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER')
+
+        col = Column.match("`colname` BIT(4) NOT NULL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertEqual(col.collen, [4])
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertEqual(col.notnull, "NOT NULL")
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER NOT NULL')
+
+
+    def test_INT(self):
+        col = Column.match("`colname` INTEGER,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertIsNone(col.key)
+        self.assertIsNone(col.comment)
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER')
+
+        line = "`colname` INTEGER DEFAULT '1' COMMENT 'a string' COLUMN_FORMAT FIXED,"
+        col = Column.match(line)
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertIsNone(col.key)
+        self.assertEqual(col.comment, "'a string'", line)
+        self.assertEqual(col.sql(True), '"colname" INTEGER DEFAULT 1')
+        self.assertEqual(col.sql(), '"colname" INTEGER DEFAULT 1')
+
+        col = Column.match("`colname` INTEGER UNIQUE,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.key, "UNIQUE")
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER UNIQUE')
+
+        col = Column.match("`colname` INTEGER UNIQUE KEY,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.key, "UNIQUE KEY")
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER UNIQUE')
+
+        col = Column.match("`colname` INTEGER PRIMARY KEY,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.key, "PRIMARY KEY")
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER PRIMARY KEY')
+
+        col = Column.match("`colname` INTEGER NOT NULL AUTO_INCREMENT,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNotNone(col.notnull)
+        self.assertIsNotNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" INTEGER AUTOINCREMENT')
+        self.assertEqual(col.sql(), '"colname" INTEGER NOT NULL AUTOINCREMENT')
+
+        col = Column.match("`colname` INTEGER NOT NULL DEFAULT '13',")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNotNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.default, 13)
+        self.assertEqual(col.sql(True), '"colname" INTEGER DEFAULT 13')
+        self.assertEqual(col.sql(), '"colname" INTEGER NOT NULL DEFAULT 13')
+
+        col = Column.match("`colname` TINYINT UNSIGNED,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'SMALLINT')
+        self.assertIsNone(col.collen)
+        self.assertIsNotNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertEqual(col.sql(True), '"colname" SMALLINT')
+        self.assertEqual(col.sql(), '"colname" SMALLINT')
+
+        col = Column.match("`colname` TINYINT(4) ZEROFILL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'SMALLINT')
+        self.assertEqual(col.collen, [4])
+        self.assertIsNone(col.unsigned)
+        self.assertIsNotNone(col.zerofill)
+        self.assertEqual(col.sql(True), '"colname" SMALLINT')
+        self.assertEqual(col.sql(), '"colname" SMALLINT')
+        self.assertIsNone(col.notnull)
+
+        col = Column.match("`colname` INT(4) UNSIGNED ZEROFILL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertEqual(col.collen, [4])
+        self.assertIsNotNone(col.unsigned)
+        self.assertIsNotNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER')
+
+
+
+    def test_REAL(self):
+        for mysqltype in ("REAL", "FLOAT"):
+            col = Column.match("`colname` {} UNSIGNED,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'REAL')
+            self.assertIsNone(col.collen)
+            self.assertIsNotNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertEqual(col.sql(True), '"colname" REAL')
+            self.assertEqual(col.sql(), '"colname" REAL')
+
+            col = Column.match("`colname` {}(4,12) ZEROFILL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'REAL')
+            self.assertEqual(col.collen, [4, 12])
+            self.assertIsNone(col.unsigned)
+            self.assertIsNotNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertEqual(col.sql(True), '"colname" REAL')
+            self.assertEqual(col.sql(), '"colname" REAL')
+
+            col = Column.match("`colname` {}( 4, 12 ) UNSIGNED ZEROFILL DEFAULT '13.14',".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'REAL')
+            self.assertEqual(col.collen, [4, 12])
+            self.assertIsNotNone(col.unsigned)
+            self.assertIsNotNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertEqual(col.sql(True), '"colname" REAL DEFAULT 13.14')
+            self.assertEqual(col.sql(), '"colname" REAL DEFAULT 13.14')
+
+            col = Column.match("`colname` {}( 4, 12 ) UNSIGNED ZEROFILL NOT null,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'REAL')
+            self.assertEqual(col.collen, [4, 12])
+            self.assertIsNotNone(col.unsigned)
+            self.assertIsNotNone(col.zerofill)
+            self.assertEqual(col.notnull, "NOT null")
+            self.assertEqual(col.sql(True), '"colname" REAL')
+            self.assertEqual(col.sql(), '"colname" REAL NOT NULL')
+
+
+    def test_DOUBLE(self):
+        col = Column.match("`colname` DOUBLE UNSIGNED,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'DOUBLE')
+        self.assertIsNone(col.collen)
+        self.assertIsNotNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertEqual(col.sql(True), '"colname" DOUBLE')
+        self.assertEqual(col.sql(), '"colname" DOUBLE')
+
+        col = Column.match("`colname` DOUBLE(4,12) ZEROFILL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'DOUBLE')
+        self.assertEqual(col.collen, [4, 12])
+        self.assertIsNone(col.unsigned)
+        self.assertIsNotNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertEqual(col.sql(True), '"colname" DOUBLE')
+        self.assertEqual(col.sql(), '"colname" DOUBLE')
+
+        col = Column.match("`colname` DOUBLE(4,12) UNSIGNED ZEROFILL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'DOUBLE')
+        self.assertEqual(col.collen, [4, 12])
+        self.assertIsNotNone(col.unsigned)
+        self.assertIsNotNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertEqual(col.sql(True), '"colname" DOUBLE')
+        self.assertEqual(col.sql(), '"colname" DOUBLE')
+
+
+    def test_NUMERIC(self):
+        for mysqltype in ("DECIMAL", "NUMERIC"):
+            col = Column.match("`colname` {} UNSIGNED,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'NUMERIC')
+            self.assertIsNone(col.collen)
+            self.assertIsNotNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertEqual(col.sql(True), '"colname" NUMERIC')
+            self.assertEqual(col.sql(), '"colname" NUMERIC')
+
+            col = Column.match("`colname` {}(4,12) ZEROFILL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'NUMERIC')
+            self.assertEqual(col.collen, [4, 12])
+            self.assertIsNone(col.unsigned)
+            self.assertIsNotNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertEqual(col.sql(True), '"colname" NUMERIC')
+            self.assertEqual(col.sql(), '"colname" NUMERIC')
+
+            col = Column.match("`colname` {}( 4, 12 ) UNSIGNED ZEROFILL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'NUMERIC')
+            self.assertEqual(col.collen, [4, 12])
+            self.assertIsNotNone(col.unsigned)
+            self.assertIsNotNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertEqual(col.sql(True), '"colname" NUMERIC')
+            self.assertEqual(col.sql(), '"colname" NUMERIC')
+
+
+    def test_DATE(self):
+        col = Column.match("`colname` DATE,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'DATE')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" DATE')
+        self.assertEqual(col.sql(), '"colname" DATE')
+
+
+    def test_TIME(self):
+        col = Column.match("`colname` TIME,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'TIME')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" TIME')
+        self.assertEqual(col.sql(), '"colname" TIME')
+
+
+    def test_TIMESTAMP(self):
+        col = Column.match("`colname` TIMESTAMP,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'TIMESTAMP')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" TIMESTAMP')
+        self.assertEqual(col.sql(), '"colname" TIMESTAMP')
+
+
+    def test_DATETIME(self):
+        col = Column.match("`colname` DATETIME,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'DATETIME')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" DATETIME')
+        self.assertEqual(col.sql(), '"colname" DATETIME')
+
+
+    def test_YEAR(self):
+        col = Column.match("`colname` YEAR,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'INTEGER')
+        self.assertIsNone(col.collen)
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" INTEGER')
+        self.assertEqual(col.sql(), '"colname" INTEGER')
+
+
+
+    def test_CHAR(self):
+        for mysqltype in ("CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT"):
+            col = Column.match("`colname` {},".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'TEXT')
+            self.assertIsNone(col.collen)
+            self.assertIsNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertIsNone(col.autoincrement)
+            self.assertIsNone(col.charset)
+            self.assertIsNone(col.collate)
+            self.assertEqual(col.sql(True), '"colname" TEXT')
+            self.assertEqual(col.sql(), '"colname" TEXT')
+
+            col = Column.match("`colname` {}(4) NOT NULL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'TEXT')
+            self.assertEqual(col.collen, [4])
+            self.assertIsNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertEqual(col.notnull, "NOT NULL")
+            self.assertIsNone(col.autoincrement)
+            self.assertIsNone(col.charset)
+            self.assertIsNone(col.collate)
+            self.assertEqual(col.sql(True), '"colname" TEXT')
+            self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+
+            col = Column.match("`colname` {}(4) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'TEXT')
+            self.assertEqual(col.collen, [4])
+            self.assertIsNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertEqual(col.notnull, "NOT NULL")
+            self.assertIsNone(col.autoincrement)
+            self.assertEqual(col.charset, "utf8")
+            self.assertEqual(col.collate, "utf8_unicode_ci")
+            self.assertEqual(col.sql(True), '"colname" TEXT')
+            self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+
+
+    def test_BINARY(self):
+        for mysqltype in (
+                        "BINARY", "VARBINARY",
+                        "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB",
+                        "TINYTEXT BINARY", "TEXT BINARY", "MEDIUMTEXT BINARY", "LONGTEXT BINARY"
+                        ):
+            line = "`colname` {},".format(mysqltype)
+            col = Column.match(line)
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'BLOB', line)
+            self.assertIsNone(col.collen)
+            self.assertIsNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertIsNone(col.notnull)
+            self.assertIsNone(col.autoincrement)
+            self.assertIsNone(col.charset)
+            self.assertIsNone(col.collate)
+            self.assertEqual(col.sql(True), '"colname" BLOB')
+            self.assertEqual(col.sql(), '"colname" BLOB')
+
+            col = Column.match("`colname` {} NOT NULL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'BLOB')
+            self.assertIsNone(col.collen)
+            self.assertIsNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertEqual(col.notnull, "NOT NULL")
+            self.assertIsNone(col.autoincrement)
+            self.assertIsNone(col.charset)
+            self.assertIsNone(col.collate)
+            self.assertEqual(col.sql(True), '"colname" BLOB')
+            self.assertEqual(col.sql(), '"colname" BLOB NOT NULL')
+
+            col = Column.match("`colname` {} CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,".format(mysqltype))
+            self.assertEqual(col.colname, 'colname')
+            self.assertEqual(col.coltype, 'BLOB')
+            self.assertIsNone(col.collen)
+            self.assertIsNone(col.unsigned)
+            self.assertIsNone(col.zerofill)
+            self.assertEqual(col.notnull, "NOT NULL")
+            self.assertIsNone(col.autoincrement)
+            self.assertEqual(col.charset, "utf8")
+            self.assertEqual(col.collate, "utf8_unicode_ci")
+            self.assertEqual(col.sql(True), '"colname" BLOB')
+            self.assertEqual(col.sql(), '"colname" BLOB NOT NULL')
+
+
+    def test_ENUM(self):
+        col = Column.match("`colname` ENUM('small', 'medium', 'large') NOT NULL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'TEXT')
+        self.assertEqual(col.originaltype, 'ENUM')
+        self.assertEqual(col.collen, ["'small'", "'medium'", "'large'"])
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNotNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" TEXT')
+        self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+
+
+    def test_SET(self):
+        col = Column.match("`colname` SET('small', 'medium', 'large') NOT NULL,")
+        self.assertEqual(col.colname, 'colname')
+        self.assertEqual(col.coltype, 'TEXT')
+        self.assertEqual(col.originaltype, 'SET')
+        self.assertEqual(col.collen, ["'small'", "'medium'", "'large'"])
+        self.assertIsNone(col.unsigned)
+        self.assertIsNone(col.zerofill)
+        self.assertIsNotNone(col.notnull)
+        self.assertIsNone(col.autoincrement)
+        self.assertEqual(col.sql(True), '"colname" TEXT')
+        self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+
+
 class TestTable(unittest.TestCase):
 
 
@@ -154,57 +591,6 @@ class TestTable(unittest.TestCase):
         self.assertEqual(tbl.name, 'tbl_name')
         tbl = Table("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name` (")
         self.assertEqual(tbl.name, 'tbl_name')
-
-
-    def test_re_colmatch(self):
-        m = self.tbl.colmatch(self.col1)
-        self.assertIsNotNone(m)
-        colname, coltype, collen, rest = m.groups()
-        colname, coltype, collen, rest = m.groups()
-        self.assertEqual(colname, "pnb")
-        self.assertEqual(coltype, "varchar")
-        self.assertEqual(collen, "254")
-        self.assertEqual(rest, "DEFAULT '' COMMENT 'UNIMARC.personal name $b',")
-
-
-    def test_re_comment(self):
-        m = self.tbl.comment(self.col1)
-        self.assertIsNotNone(m)
-        self.assertEqual(m.group(1), "COMMENT 'UNIMARC.personal name $b'")
-
-
-    def test_re_autoincrement(self):
-        self.assertIsNone(self.tbl.autoincrement(self.col1))
-        self.assertIsNotNone(self.tbl.autoincrement(self.col2))
-
-
-    def test_re_notnull(self):
-        self.assertIsNone(self.tbl.notnull(self.col1))
-        self.assertIsNotNone(self.tbl.notnull(self.col2))
-
-
-    def test_re_primarykey(self):
-        m = self.tbl.primarykey(self.col3)
-        self.assertIsNotNone(m)
-        pkey = m.group(1)
-        self.assertEqual(pkey, "(`aid`)")
-
-        m = self.tbl.primarykey(self.col4)
-        self.assertIsNotNone(m)
-        pkey = m.group(1)
-        self.assertIsNone(pkey)
-
-
-    def test_match_col_1(self):
-        col = "  `bid` int(10) unsigned NOT NULL DEFAULT '0',"
-        m = self.tbl.colmatch(col)
-        self.assertIsNotNone(m)
-
-
-    def test_match_col_2(self):
-        col = "  `bid` int unsigned NOT NULL DEFAULT '0',"
-        m = self.tbl.colmatch(col)
-        self.assertIsNotNone(m)
 
 
     def test_match_key_1(self):

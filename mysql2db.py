@@ -79,6 +79,106 @@ class Insert:
 
 
 
+
+
+class Column:
+
+    typemap = {
+        'TINYINT': 'SMALLINT', 'SMALLINT': 'SMALLINT',
+        'MEDIUMINT': 'INTEGER', 'INT': 'INTEGER', 'INTEGER': 'INTEGER',
+        'BIGINT': 'BIGINT',
+        'REAL': 'REAL', 'DOUBLE': 'DOUBLE', 'FLOAT': 'REAL',
+        'DECIMAL': 'NUMERIC', 'NUMERIC': 'NUMERIC',
+        'DATE': 'DATE', 'TIME': 'TIME', 'TIMESTAMP': 'TIMESTAMP', 'DATETIME': 'DATETIME',
+        'YEAR': 'INTEGER',
+        'CHAR': 'TEXT', 'VARCHAR': 'TEXT', 'TINYTEXT': 'TEXT', 'TEXT': 'TEXT', 'MEDIUMTEXT': 'TEXT', 'LONGTEXT': 'TEXT',
+        'BINARY': 'BLOB', 'VARBINARY': 'BLOB', 'TINYBLOB': 'BLOB', 'BLOB': 'BLOB', 'MEDIUMBLOB': 'BLOB', 'LONGBLOB': 'BLOB',
+        'ENUM': 'TEXT',
+        'SET': 'TEXT',
+        'BIT': 'INTEGER',
+    }
+
+    colmatch = re.compile(
+        "\s*`(?P<colname>\w+)`"
+        "\s+(?P<coltype>[\w]+)"
+        "\s*(?P<collen>[(][^()]+[)])?(?:[)]?)"
+        "\s*(?P<binary>BINARY)?"
+        "\s*(?P<unsigned>UNSIGNED)?"
+        "\s*(?P<zerofill>ZEROFILL)?"
+        "\s*(?P<charset>CHARACTER SET\s+\w+)?"
+        "\s*(?P<collate>COLLATE\s+\w+)?"
+
+        "\s*(?P<notnull>NOT NULL|NULL)?"
+        "\s*(?P<default>DEFAULT\s+'[^']*')?"
+        "\s*(?P<autoincrement>AUTO_INCREMENT)?"
+        "\s*(?P<key>UNIQUE KEY|PRIMARY KEY|UNIQUE|KEY)?"
+        "\s*(?P<comment>COMMENT\s+'[^']*')?"
+        "\s*(?:COLUMN_FORMAT \w+)?"
+
+        "\s*(?P<reference>.*)", re.IGNORECASE).match
+
+
+    @classmethod
+    def match(cls, line):
+        m = cls.colmatch(line)
+        if not m: return
+        return cls(m)
+
+
+    def __init__(self, matcho):
+        self.matcho = matcho
+        for key, value in matcho.groupdict().items():
+            setattr(self, key, value)
+        self.originaltype = self.coltype
+        self.coltype = self.typemap[self.coltype.upper()]
+        if self.collen:
+            self.collen = [int(x.strip()) if x.strip().isdigit() else x.strip() for x in self.collen[1:-1].split(',')]
+        if self.default:
+            self.default = self.default[len("DEFAULT"):].strip()
+            if self.coltype in ('SMALLINT', 'INTEGER', 'BIGINT'):
+                self.default = int(self.default.strip("'"))
+            elif self.coltype in ('REAL', 'DOUBLE', 'NUMERIC'):
+                self.default = float(self.default.strip("'"))
+        if self.comment:
+            self.comment = self.comment[len("COMMENT"):].strip()
+        if self.charset:
+            self.charset = self.charset[len("CHARACTER SET"):].strip()
+        if self.collate:
+            self.collate = self.collate[len("COLLATE"):].strip()
+        if self.binary:
+            self.coltype = "BLOB"
+
+
+    def hasIndex(self):
+        return self.key is not None and self.key.upper() == "KEY"
+
+
+    def constraints(self):
+        cons = []
+        if self.key is not None:
+            if self.key.upper() in ("UNIQUE KEY", "UNIQUE"):
+                cons.append("UNIQUE")
+            elif self.key.upper() == "PRIMARY KEY":
+                cons.append("PRIMARY KEY")
+        if self.notnull:
+            cons.append("NOT NULL")
+        return cons
+
+
+    def sql(self, skip_constrains=False):
+        lst = ['"{}"'.format(self.colname)]
+        lst.append("{}".format(self.coltype))
+        if not skip_constrains:
+            lst.extend(self.constraints())
+        if self.autoincrement:
+            lst.append("AUTOINCREMENT")
+        if self.default is not None:
+            lst.append("DEFAULT {}".format(self.default))
+        s = ' '.join(lst)
+        return s
+
+
+
 class Table:
 
     creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?", re.IGNORECASE).match
@@ -120,37 +220,16 @@ class Table:
         return (keyname, qual, columns)
 
 
-    colmatch = re.compile(
-        "\s*`(?P<colname>\w+)`"
-        "\s+(?P<coltype>[\w]+)"
-        "\s*(?:[(]?)(?P<collen>[\d,]+)?(?:[)]?)"
-        "\s*(?P<rest>.*)", re.IGNORECASE).match
     notnull = re.compile("NOT NULL", re.IGNORECASE).search
     autoincrement = re.compile("AUTO_INCREMENT", re.IGNORECASE).search
     comment = re.compile("(COMMENT\s+'[^']*')", re.IGNORECASE).search
     primarykey = re.compile("PRIMARY\s+KEY\s*([(][^)]+[)])*", re.IGNORECASE).search
 
-    typemap = {
-        'TINYINT': 'INTEGER', 'SMALLINT': 'INTEGER', 'MEDIUMINT': 'INTEGER', 'INT': 'INTEGER', 'INTEGER': 'INTEGER', 'BIGINT': 'INTEGER',
-        'REAL': 'REAL', 'DOUBLE': 'DOUBLE', 'FLOAT': 'FLOAT',
-        'DECIMAL': 'NUMERIC',
-        'DATE': 'DATE', 'TIME': 'TIME', 'TIMESTAMP': 'TIMESTAMP', 'DATETIME': 'DATETIME',
-        'YEAR': 'INTEGER',
-        'CHAR': 'TEXT', 'VARCHAR': 'TEXT', 'TINYTEXT': 'TEXT', 'TEXT': 'TEXT', 'MEDIUMTEXT': 'TEXT', 'LONGTEXT': 'TEXT',
-        'BINARY': 'BLOB', 'VARBINARY': 'BLOB', 'TINYBLOB': 'BLOB', 'BLOB': 'BLOB', 'MEDIUMBLOB': 'BLOB', 'LONGBLOB': 'BLOB',
-        'ENUM': 'TEXT',
-        'SET': 'TEXT',
-    }
-
     def match_col(self, line):
-        l = line#self.re_sub_length("", line)
-        m = self.colmatch(l)
-        if not m: return
-        colname, coltype, collen, rest = m.groups()
-        #print (colname, coltype, collen, rest)
-        coltype = self.typemap[coltype.upper()]
-        self.columns[colname] = '"{}" {}'.format(colname, coltype)
-        return colname, coltype, collen, rest
+        column = Column.match(line)
+        if column:
+            self.columns[column.colname] = column.sql()
+            return column
 
 
     re_engine = re.compile("[)] ENGINE=", re.IGNORECASE).search
