@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from mysql2db import Insert, Table, Column
+from mysql2db import Insert, Table, Column, Constraint
 
 
 
@@ -566,6 +566,175 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.autoincrement)
         self.assertEqual(col.sql(True), '"colname" TEXT')
         self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+
+
+
+class TestConstraint(unittest.TestCase):
+
+
+    def test_PRIMARY_KEY(self):
+        col = Constraint.match("CONSTRAINT `symbol` PRIMARY KEY (`index_col_name1`,`index_col_name2`),")
+        self.assertIsNotNone(col.pkey)
+        self.assertEqual(col.symbol, 'symbol')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_PRIMARY_KEY_type(self):
+        col = Constraint.match("CONSTRAINT `symbol` PRIMARY KEY USING BTREE (`index_col_name1`,`index_col_name2`),")
+        self.assertEqual(col.symbol, 'symbol')
+        self.assertEqual(col.indextype, "USING BTREE")
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_KEY(self):
+        col = Constraint.match("KEY `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertIsNone(col.unique)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNone(col.fkey)
+
+
+    def test_KEY_2(self):
+        col = Constraint.match("KEY `index_name` (`index_col_name1`,`index_col_name2`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_KEY_type(self):
+        col = Constraint.match("KEY `index_name` USING BTREE (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertEqual(col.indextype, "USING BTREE")
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_KEY_2_type(self):
+        col = Constraint.match("KEY `index_name` USING HASH (`index_col_name1`,`index_col_name2`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertEqual(col.indextype, "USING HASH")
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_INDEX(self):
+        col = Constraint.match("INDEX `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_INDEX_2(self):
+        col = Constraint.match("INDEX `index_name` (`index_col_name1`,`index_col_name2`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_INDEX_type(self):
+        col = Constraint.match("INDEX `index_name` USING BTREE (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertEqual(col.indextype, "USING BTREE")
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_INDEX_2_type(self):
+        col = Constraint.match("INDEX `index_name` USING HASH (`index_col_name1`,`index_col_name2`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertEqual(col.indextype, "USING HASH")
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_UNIQUE_INDEX(self):
+        col = Constraint.match("UNIQUE INDEX `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNotNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_UNIQUE_KEY(self):
+        col = Constraint.match("UNIQUE KEY `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNotNone(col.unique)
+        self.assertIsNone(col.fkey)
+
+
+    def test_FULLTEXT_INDEX(self):
+        col = Constraint.match("FULLTEXT INDEX `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNotNone(col.fulltext)
+        self.assertIsNone(col.fkey)
+
+
+    def test_FULLTEXT_KEY(self):
+        col = Constraint.match("FULLTEXT KEY `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNotNone(col.fulltext)
+        self.assertIsNone(col.fkey)
+
+
+    def test_SPATIAL_INDEX(self):
+        col = Constraint.match("SPATIAL INDEX `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNotNone(col.fulltext)
+        self.assertIsNone(col.fkey)
+
+
+    def test_SPATIAL_KEY(self):
+        col = Constraint.match("SPATIAL KEY `index_name` (`index_col_name`),")
+        self.assertEqual(col.symbol, 'index_name')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name"])
+        self.assertIsNotNone(col.fulltext)
+        self.assertIsNone(col.fkey)
+
+
+    def test_FOREIGN_KEY(self):
+        col = Constraint.match("CONSTRAINT `symbol` FOREIGN KEY (`index_col_name1`,`index_col_name2`),")
+        self.assertIsNotNone(col.fkey)
+        self.assertEqual(col.symbol, 'symbol')
+        self.assertIsNone(col.indextype)
+        self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
+        self.assertIsNone(col.unique)
+
+
+    def test_CHECK(self):
+        col = Constraint.match(" CHECK (col_name1>col_name2),")
+        self.assertIsNotNone(col.check)
+        self.assertEqual(col.check, "(col_name1>col_name2)")
+        self.assertIsNone(col.symbol)
+        self.assertIsNone(col.indextype)
+        self.assertIsNone(col.indexcols)
+        self.assertIsNone(col.unique)
+        self.assertIsNone(col.fkey)
 
 
 class TestTable(unittest.TestCase):

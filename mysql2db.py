@@ -179,6 +179,44 @@ class Column:
 
 
 
+
+class Constraint:
+#        "\s*(?P<check>CHECK\s*[(].+[)])?"
+
+    keymatch = re.compile(
+        "\s*(?:CONSTRAINT )?"
+        "\s*(?P<unique>UNIQUE)?"
+        "\s*(?P<fulltext>FULLTEXT|SPATIAL)?"
+        "\s*(?P<key>INDEX|KEY)?"
+        "\s*(?P<symbol>`\w+`)?"
+        "\s*(?P<pkey>PRIMARY KEY)?"
+        "\s*(?P<fkey>FOREIGN KEY)?"
+        "\s*(?P<indextype>USING BTREE|USING HASH)?"
+        "\s*(?P<indexcols>[(][^()]+[)])?(?:[)]?)?"
+        "\s*(?P<check>CHECK [(].*[)])?"
+
+        "\s*(?P<rest>.*)?", re.IGNORECASE).match
+
+
+    @classmethod
+    def match(cls, line):
+        m = cls.keymatch(line)
+        if not m: return
+        return cls(m)
+
+
+    def __init__(self, matcho):
+        self.matcho = matcho
+        for key, value in matcho.groupdict().items():
+            setattr(self, key, value)
+        if self.symbol is not None:
+            self.symbol = self.symbol.strip('`')
+        if self.indexcols is not None:
+            self.indexcols = [x.strip('`') for x in self.indexcols.strip(')(').split(',')]
+        if self.check is not None:
+            self.check = self.check[5:].strip()
+
+
 class Table:
 
     creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?", re.IGNORECASE).match
