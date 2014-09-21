@@ -580,6 +580,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.sql(), 'PRIMARY KEY ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.index("tbl_name"))
 
 
     def test_PRIMARY_KEY_type(self):
@@ -589,6 +591,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.sql(), 'PRIMARY KEY ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.index("tbl_name"))
 
 
     def test_KEY(self):
@@ -598,6 +602,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.unique)
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql())
 
 
     def test_KEY_2(self):
@@ -607,6 +613,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql())
 
 
     def test_KEY_type(self):
@@ -616,6 +624,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql())
 
 
     def test_KEY_2_type(self):
@@ -625,6 +635,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql())
 
 
     def test_INDEX(self):
@@ -634,6 +646,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql())
 
 
     def test_INDEX_2(self):
@@ -643,6 +657,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql())
 
 
     def test_INDEX_type(self):
@@ -652,6 +668,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql())
 
 
     def test_INDEX_2_type(self):
@@ -661,6 +679,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql())
 
 
     def test_UNIQUE_INDEX(self):
@@ -670,6 +690,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNotNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.sql(), 'UNIQUE ("index_col_name")')
+        self.assertIsNone(col.index("tbl_name"))
 
 
     def test_UNIQUE_KEY(self):
@@ -679,6 +701,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNotNone(col.unique)
         self.assertIsNone(col.fkey)
+        self.assertEqual(col.sql(), 'UNIQUE ("index_col_name")')
+        self.assertIsNone(col.index("tbl_name"))
 
 
     def test_FULLTEXT_INDEX(self):

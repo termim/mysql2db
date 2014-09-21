@@ -217,6 +217,20 @@ class Constraint:
             self.check = self.check[5:].strip()
 
 
+    def sql(self):
+        if self.pkey:
+            return '{} ("{}")'.format(self.pkey, '", "'.join(self.indexcols))
+        elif self.unique:
+            return 'UNIQUE ("{}")'.format('", "'.join(self.indexcols))
+
+
+
+    def index(self, table_name):
+        if self.key and not self.unique:
+            return 'CREATE INDEX "{}" ON "{}" ("{}")'.format(self.symbol, table_name, '", "'.join(self.indexcols))
+
+
+
 class Table:
 
     creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?", re.IGNORECASE).match
@@ -269,6 +283,12 @@ class Table:
             self.columns[column.colname] = column.sql()
             return column
 
+    def match_constraint(self, line):
+        constraint = Constraint.match(line)
+        if constraint:
+            self.constraints.append(constraint)
+            return constraint
+
 
     re_engine = re.compile("[)] ENGINE=", re.IGNORECASE).search
 
@@ -285,7 +305,7 @@ class Table:
 
         self.src.append(line)
 
-        for match in (self.match_col, self.match_key,):
+        for match in (self.match_col, self.match_constraint,):
             try:
                 if match(line): return
             except:
