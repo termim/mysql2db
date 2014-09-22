@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import os.path
 import re
-from collections import OrderedDict
 import gzip
 
 
+
 class Insert:
+
 
     def __init__(self):
         self.statements = []
@@ -79,9 +80,8 @@ class Insert:
 
 
 
-
-
 class Column:
+
 
     typemap = {
         'TINYINT': 'SMALLINT', 'SMALLINT': 'SMALLINT',
@@ -165,10 +165,10 @@ class Column:
         return cons
 
 
-    def sql(self, skip_constrains=False):
+    def sql(self, skip_constraints=False):
         lst = ['"{}"'.format(self.colname)]
         lst.append("{}".format(self.coltype))
-        if not skip_constrains:
+        if not skip_constraints:
             lst.extend(self.constraints())
         if self.autoincrement:
             lst.append("AUTOINCREMENT")
@@ -179,9 +179,8 @@ class Column:
 
 
 
-
 class Constraint:
-#        "\s*(?P<check>CHECK\s*[(].+[)])?"
+
 
     keymatch = re.compile(
         "\s*(?:CONSTRAINT )?"
@@ -192,10 +191,10 @@ class Constraint:
         "\s*(?P<pkey>PRIMARY KEY)?"
         "\s*(?P<fkey>FOREIGN KEY)?"
         "\s*(?P<indextype>USING BTREE|USING HASH)?"
-        "\s*(?P<indexcols>[(][^()]+[)])?(?:[)]?)?"
+        "\s*(?P<indexcols>[(][^()]+[)])?"
         "\s*(?P<check>CHECK [(].*[)])?"
 
-        "\s*(?P<rest>.*)?", re.IGNORECASE).match
+        "\s*(?P<rest>,\s*)?$", re.IGNORECASE).match
 
 
     @classmethod
@@ -235,52 +234,28 @@ class Table:
 
     creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?", re.IGNORECASE).match
 
-    def __init__(self, s):
-        cm = self.creatematch(s)
-        if not cm:
-            raise Exception("Unknown create: <%s>" % s)
-        self.src = [s]
-        self.name = cm.group(1)
-        self.columns = OrderedDict()
+
+    @classmethod
+    def match(cls, line):
+        m = cls.creatematch(line)
+        if not m: return
+        return cls(m)
+
+
+    def __init__(self, matcho):
+        self.src = [matcho.string]
+        self.name = matcho.group(1)
+        self.columns = []
+        self.constraints = []
         self.pk = None
         self.keys = {}
         self.done = False
 
 
-    re_sub_length = re.compile("([(]\d+[)])").sub
-    keymatch = re.compile(
-        "(?P<qual>PRIMARY|UNIQUE|FOREIGN)?"
-        "\s*(?:INDEX|KEY)"
-        "\s+(?P<keyname>`\w+`)?"
-        "(?:\s+USING BTREE)?"
-        "[^(]*(?:[(]`)(?P<columns>[^)]+)(?:`[)])"
-        , re.IGNORECASE).search
-
-    def match_key(self, line):
-        l = self.re_sub_length("", line)
-        m = self.keymatch(l)
-        if not m:
-            return
-        qual, keyname, columns = m.groups()
-        keyname = keyname.replace('`', '"') if keyname else ''
-        columns = '"{}"'.format(columns.replace('`', '"'))
-
-        #stmt = 'CREATE INDEX test1_id_index ON test1 (id);'
-        self.keys[keyname] = qual, columns
-        if qual and qual.upper() == "PRIMARY":
-            self.pk = keyname
-        return (keyname, qual, columns)
-
-
-    notnull = re.compile("NOT NULL", re.IGNORECASE).search
-    autoincrement = re.compile("AUTO_INCREMENT", re.IGNORECASE).search
-    comment = re.compile("(COMMENT\s+'[^']*')", re.IGNORECASE).search
-    primarykey = re.compile("PRIMARY\s+KEY\s*([(][^)]+[)])*", re.IGNORECASE).search
-
     def match_col(self, line):
         column = Column.match(line)
         if column:
-            self.columns[column.colname] = column.sql()
+            self.columns.append(column)
             return column
 
     def match_constraint(self, line):
@@ -296,8 +271,6 @@ class Table:
         self.done = self.re_engine(line) is not None
         return self.done
 
-
-    _re_charset = re.compile(".*\s+(CHARACTER\s+SET\s+\w+)", re.IGNORECASE).match
 
     def feed(self, line):
         if self.done:
@@ -318,11 +291,14 @@ class Table:
         raise Exception("Unknown line: <%s>" % line)
 
 
-    def image(self):
-        s = 'CREATE TABLE "{}" (\n{}\n);'.format(
-            self.name,
-            ',\n'.join(self.columns.values()))
-        return s
+    def sql(self, skip_constraints=True):
+        if not self.done:
+            raise Exception("Table {} is not done yet".format(self.name))
+        l = ['CREATE TABLE "{}" ('.format(self.name)]
+        for column in self.columns:
+            l.append(column.sql(skip_constraints))
+        l.append(');')
+        return '\n'.join(l)
 
 
     def source(self):
@@ -419,16 +395,19 @@ class MySqlDumpReader(object):
                 if tbl: raise Exception("Parse error <%s>" % l)
                 if not self.schema_only:
                     self.commit()
-            elif l.startswith("CREATE TABLE "):
-                tbl = Table(l)
-            elif tbl:
-                if tbl.feed(l):
-                    if not self.skip_schema:
-                        self.create_table(tbl)
-                    self.tables.append(tbl)
-                    tbl = None
             else:
-                self.insert(l)
+                t = Table.match(l)
+                if t:
+                    if tbl: raise Exception("Ppevious table is not done yet <{}>".format(l))
+                    tbl = t
+                elif tbl:
+                    if tbl.feed(l):
+                        if not self.skip_schema:
+                            self.create_table(tbl)
+                        self.tables.append(tbl)
+                        tbl = None
+                else:
+                    self.insert(l)
 
 
 
@@ -459,7 +438,7 @@ class MySqlDumpToSqlDump(MySqlDumpReader):
     def create_table(self, table):
         if table.name == 'service': return
         if self.convert_schema:
-            self.out(table.image())
+            self.out(table.sql())
         else:
             self.out(table.source())
 
@@ -520,8 +499,8 @@ class MySqlToSqlite(MySqlDumpToSqlDump):
     def create_table(self, table):
         #if table.name == 'service': return
         if self.verbose:
-            print (table.image())
-        self.curs.execute(table.image())
+            print (table.sql())
+        self.curs.execute(table.sql())
 
 
     def do_insert(self, query):

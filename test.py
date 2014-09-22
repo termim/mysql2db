@@ -742,7 +742,7 @@ class TestConstraint(unittest.TestCase):
 
 
     def test_FOREIGN_KEY(self):
-        col = Constraint.match("CONSTRAINT `symbol` FOREIGN KEY (`index_col_name1`,`index_col_name2`),")
+        col = Constraint.match("CONSTRAINT `symbol` FOREIGN KEY (`col_name1`,`col_name2`) REFERENCES `tbl_name` (`f_col_name1`,`f_col_name2`),")
         self.assertIsNotNone(col.fkey)
         self.assertEqual(col.symbol, 'symbol')
         self.assertIsNone(col.indextype)
@@ -761,11 +761,17 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.fkey)
 
 
+    def test_1(self):
+        s= ") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;"
+        col = Constraint.match(s)
+        self.assertIsNone(col)
+
+
+
 class TestTable(unittest.TestCase):
 
 
     def setUp(self):
-        self.tbl = Table("CREATE TABLE `my_table` (")
         self.col1 = "  `pnb` varchar(254) DEFAULT '' COMMENT 'UNIMARC.personal name $b',"
         self.col2 = " `aid` int(10) unsigned NOT NULL AUTO_INCREMENT,"
         self.col3 = "  PRIMARY KEY (`aid`) USING BTREE,"
@@ -773,104 +779,141 @@ class TestTable(unittest.TestCase):
 
 
     def test_create(self):
-        self.assertEqual(self.tbl.name, 'my_table')
-        tbl = Table("CREATE  TABLE     `tbl_name`")
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        self.assertEqual(tbl.name, 'my_table')
+        tbl = Table.match("CREATE  TABLE     `tbl_name`")
         self.assertEqual(tbl.name, 'tbl_name')
-        tbl = Table("CREATE TEMPORARY TABLE `tbl_name`")
+        tbl = Table.match("CREATE TEMPORARY TABLE `tbl_name`")
         self.assertEqual(tbl.name, 'tbl_name')
-        tbl = Table("CREATE   TABLE IF NOT EXISTS `tbl_name`")
+        tbl = Table.match("CREATE   TABLE IF NOT EXISTS `tbl_name`")
         self.assertEqual(tbl.name, 'tbl_name')
-        tbl = Table("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name`")
+        tbl = Table.match("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name`")
         self.assertEqual(tbl.name, 'tbl_name')
-        tbl = Table("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name` (")
+        tbl = Table.match("CREATE TEMPORARY TABLE IF NOT EXISTS `tbl_name` (")
         self.assertEqual(tbl.name, 'tbl_name')
 
-
-    def test_match_key_1(self):
-        key = " KEY `KeyName` (`FirstName`(20)), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"KeyName"')
-        self.assertEqual(res[1], None)
-        self.assertEqual(res[2], '"FirstName"')
-
-
-    def test_match_key_2(self):
-        key = " KEY `KeyName` (`col1`,`col2`), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"KeyName"')
-        self.assertEqual(res[1], None)
-        self.assertEqual(res[2], '"col1","col2"')
-
-
-    def test_match_primary_key_1(self):
-        key = " PRIMARY KEY `KeyName` (`FirstName`(20)), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"KeyName"')
-        self.assertEqual(res[1], "PRIMARY")
-        self.assertEqual(res[2], '"FirstName"')
-
-
-    def test_match_primary_key_2(self):
-        key = " PRIMARY KEY (`bid`,`aid`), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '')
-        self.assertEqual(res[1], "PRIMARY")
-        self.assertEqual(res[2], '"bid","aid"')
-
-
-    def test_match_primary_key_3(self):
-        key = " PRIMARY KEY USING BTREE (`bid`,`aid`), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '')
-        self.assertEqual(res[1], "PRIMARY")
-        self.assertEqual(res[2], '"bid","aid"')
-
-
-    def test_match_unique_key_1(self):
-        key = " UNIQUE KEY `FirstName` (`FirstName`(20)), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"FirstName"')
-        self.assertEqual(res[1], "UNIQUE")
-        self.assertEqual(res[2], '"FirstName"')
-
-
-    def test_match_unique_key_2(self):
-        key = " UNIQUE KEY `FirstName` (`FirstName`, `Page`), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"FirstName"')
-        self.assertEqual(res[1], "UNIQUE")
-        self.assertEqual(res[2], '''"FirstName", "Page"''')
-
-
-    def test_match_unique_key_3(self):
-        key = " UNIQUE KEY `FirstName` USING BTREE (`FirstName`, `Page`), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"FirstName"')
-        self.assertEqual(res[1], "UNIQUE")
-        self.assertEqual(res[2], '"FirstName", "Page"')
-
-
-    def test_match_foreign_key(self):
-        key = " FOREIGN KEY `KeyName` (`FirstName`(20)), "
-        res = self.tbl.match_key(key)
-        self.assertIsNotNone(res)
-        self.assertEqual(res[0], '"KeyName"')
-        self.assertEqual(res[1], "FOREIGN")
-        self.assertEqual(res[2], '"FirstName"')
+        self.assertRaises(Exception, tbl.sql)
 
 
     def test_match_end(self):
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        #tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
         stmt = ") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;"
-        res = self.tbl.match_end(stmt)
+        res = tbl.match_end(stmt)
         self.assertIsNotNone(res)
+
+
+    def test_empty(self):
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
+        self.assertTrue(tbl.done)
+
+
+    def test_1(self):
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        tbl.feed("`field1` int")
+        tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
+        self.assertTrue(tbl.done)
+        self.assertEqual(
+                         tbl.sql(skip_constraints=True), '\n'.join((
+        'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
+        self.assertEqual(
+                         tbl.sql(skip_constraints=False), '\n'.join((
+        'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
+
+
+    def test_1_UNIQUE(self):
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        tbl.feed("`field1` int UNIQUE")
+        tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
+        self.assertTrue(tbl.done)
+        self.assertEqual(
+                         tbl.sql(skip_constraints=True), '\n'.join((
+        'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
+        self.assertEqual(
+                         tbl.sql(skip_constraints=False), '\n'.join((
+        'CREATE TABLE "my_table" (', '"field1" INTEGER UNIQUE', ');')))
+
+
+    #def test_match_key_1(self):
+        #key = " KEY `KeyName` (`FirstName`(20)), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"KeyName"')
+        #self.assertEqual(res[1], None)
+        #self.assertEqual(res[2], '"FirstName"')
+#
+#
+    #def test_match_key_2(self):
+        #key = " KEY `KeyName` (`col1`,`col2`), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"KeyName"')
+        #self.assertEqual(res[1], None)
+        #self.assertEqual(res[2], '"col1","col2"')
+#
+#
+    #def test_match_primary_key_1(self):
+        #key = " PRIMARY KEY `KeyName` (`FirstName`(20)), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"KeyName"')
+        #self.assertEqual(res[1], "PRIMARY")
+        #self.assertEqual(res[2], '"FirstName"')
+#
+#
+    #def test_match_primary_key_2(self):
+        #key = " PRIMARY KEY (`bid`,`aid`), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '')
+        #self.assertEqual(res[1], "PRIMARY")
+        #self.assertEqual(res[2], '"bid","aid"')
+#
+#
+    #def test_match_primary_key_3(self):
+        #key = " PRIMARY KEY USING BTREE (`bid`,`aid`), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '')
+        #self.assertEqual(res[1], "PRIMARY")
+        #self.assertEqual(res[2], '"bid","aid"')
+#
+#
+    #def test_match_unique_key_1(self):
+        #key = " UNIQUE KEY `FirstName` (`FirstName`(20)), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"FirstName"')
+        #self.assertEqual(res[1], "UNIQUE")
+        #self.assertEqual(res[2], '"FirstName"')
+#
+#
+    #def test_match_unique_key_2(self):
+        #key = " UNIQUE KEY `FirstName` (`FirstName`, `Page`), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"FirstName"')
+        #self.assertEqual(res[1], "UNIQUE")
+        #self.assertEqual(res[2], '''"FirstName", "Page"''')
+#
+#
+    #def test_match_unique_key_3(self):
+        #key = " UNIQUE KEY `FirstName` USING BTREE (`FirstName`, `Page`), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"FirstName"')
+        #self.assertEqual(res[1], "UNIQUE")
+        #self.assertEqual(res[2], '"FirstName", "Page"')
+#
+#
+    #def test_match_foreign_key(self):
+        #key = " FOREIGN KEY `KeyName` (`FirstName`(20)), "
+        #res = self.tbl.match_key(key)
+        #self.assertIsNotNone(res)
+        #self.assertEqual(res[0], '"KeyName"')
+        #self.assertEqual(res[1], "FOREIGN")
+        #self.assertEqual(res[2], '"FirstName"')
 
 
 
