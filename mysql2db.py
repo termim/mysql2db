@@ -165,7 +165,7 @@ class Column:
         return cons
 
 
-    def sql(self, skip_constraints=False):
+    def sql(self, flavor, skip_constraints=True):
         lst = ['"{}"'.format(self.colname)]
         lst.append("{}".format(self.coltype))
         if not skip_constraints:
@@ -209,11 +209,11 @@ class _Constraint:
                 #self.check = value[5:].strip()
 
 
-    def sql(self):
+    def sql(self, flavor):
         return
 
 
-    def index(self, table_name):
+    def index(self, table_name, flavor):
         return
 
 
@@ -230,12 +230,12 @@ class Index(_Constraint):
         re.IGNORECASE).match
 
 
-    def sql(self):
+    def sql(self, flavor):
         if self.unique:
             return 'UNIQUE ("{}")'.format('", "'.join(self.indexcols))
 
 
-    def index(self, table_name):
+    def index(self, table_name, flavor):
         if not self.unique:
             return 'CREATE INDEX "{}" ON "{}" ("{}")'.format(
                         self.indexname, table_name, '", "'.join(self.indexcols))
@@ -252,7 +252,7 @@ class PrimaryKey(_Constraint):
         re.IGNORECASE).match
 
 
-    def sql(self):
+    def sql(self, flavor):
         return '{} ("{}")'.format(self.pkey, '", "'.join(self.indexcols))
 
 
@@ -267,7 +267,7 @@ class ForeignKey(_Constraint):
         re.IGNORECASE).match
 
 
-    def sql(self):
+    def sql(self, flavor):
         return '{} ("{}")'.format(self.fkey, '", "'.join(self.indexcols))
 
 
@@ -280,7 +280,7 @@ class Check(_Constraint):
         re.IGNORECASE).match
 
 
-    def sql(self):
+    def sql(self, flavor):
         return '{} ("{}")'.format(self.fkey, '", "'.join(self.indexcols))
 
 
@@ -356,12 +356,12 @@ class Table:
         raise Exception("Unknown line: <%s>" % line)
 
 
-    def sql(self, skip_constraints=True):
+    def sql(self, flavor, skip_constraints=True):
         if not self.done:
             raise Exception("Table {} is not done yet".format(self.name))
         l = ['CREATE TABLE "{}" ('.format(self.name)]
         for column in self.columns:
-            l.append(column.sql(skip_constraints))
+            l.append(column.sql(flavor, skip_constraints))
         l.append(');')
         return '\n'.join(l)
 
@@ -372,6 +372,10 @@ class Table:
 
 
 class MySqlDumpReader(object):
+
+
+    flavor=None
+
 
     def __init__(self):
         self.insert_match = re.compile("^INSERT INTO `(.*)` VALUES [(](.*)[)];$").match
@@ -479,6 +483,9 @@ class MySqlDumpReader(object):
 class MySqlDumpToSqlDump(MySqlDumpReader):
 
 
+    flavor='sqlite'
+
+
     def open_out(self, file_out, overwrite=False):
         if os.path.exists(file_out) and overwrite:
             os.remove(file_out)
@@ -503,7 +510,7 @@ class MySqlDumpToSqlDump(MySqlDumpReader):
     def create_table(self, table):
         if table.name == 'service': return
         if self.convert_schema:
-            self.out(table.sql())
+            self.out(table.sql(flavor=self.flavor))
         else:
             self.out(table.source())
 
@@ -564,8 +571,8 @@ class MySqlToSqlite(MySqlDumpToSqlDump):
     def create_table(self, table):
         #if table.name == 'service': return
         if self.verbose:
-            print (table.sql())
-        self.curs.execute(table.sql())
+            print (table.sql(flavor=self.flavor))
+        self.curs.execute(table.sql(flavor=self.flavor))
 
 
     def do_insert(self, query):

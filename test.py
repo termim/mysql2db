@@ -146,8 +146,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER')
 
         col = Column.match("`colname` BIT(4) NOT NULL,")
         self.assertEqual(col.colname, 'colname')
@@ -157,8 +157,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertEqual(col.notnull, "NOT NULL")
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER NOT NULL')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER NOT NULL')
 
 
     def test_INT(self):
@@ -172,8 +172,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.autoincrement)
         self.assertIsNone(col.key)
         self.assertIsNone(col.comment)
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER')
 
         line = "`colname` INTEGER DEFAULT '1' COMMENT 'a string' COLUMN_FORMAT FIXED,"
         col = Column.match(line)
@@ -186,8 +186,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.autoincrement)
         self.assertIsNone(col.key)
         self.assertEqual(col.comment, "'a string'", line)
-        self.assertEqual(col.sql(True), '"colname" INTEGER DEFAULT 1')
-        self.assertEqual(col.sql(), '"colname" INTEGER DEFAULT 1')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER DEFAULT 1')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER DEFAULT 1')
 
         col = Column.match("`colname` INTEGER UNIQUE,")
         self.assertEqual(col.colname, 'colname')
@@ -198,8 +198,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
         self.assertEqual(col.key, "UNIQUE")
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER UNIQUE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER UNIQUE')
 
         col = Column.match("`colname` INTEGER UNIQUE KEY,")
         self.assertEqual(col.colname, 'colname')
@@ -210,8 +210,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
         self.assertEqual(col.key, "UNIQUE KEY")
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER UNIQUE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER UNIQUE')
 
         col = Column.match("`colname` INTEGER PRIMARY KEY,")
         self.assertEqual(col.colname, 'colname')
@@ -222,8 +222,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
         self.assertEqual(col.key, "PRIMARY KEY")
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER PRIMARY KEY')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER PRIMARY KEY')
 
         col = Column.match("`colname` INTEGER NOT NULL AUTO_INCREMENT,")
         self.assertEqual(col.colname, 'colname')
@@ -233,8 +233,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNotNone(col.notnull)
         self.assertIsNotNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" INTEGER AUTOINCREMENT')
-        self.assertEqual(col.sql(), '"colname" INTEGER NOT NULL AUTOINCREMENT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER AUTOINCREMENT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER NOT NULL AUTOINCREMENT')
 
         col = Column.match("`colname` INTEGER NOT NULL DEFAULT '13',")
         self.assertEqual(col.colname, 'colname')
@@ -245,8 +245,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNotNone(col.notnull)
         self.assertIsNone(col.autoincrement)
         self.assertEqual(col.default, 13)
-        self.assertEqual(col.sql(True), '"colname" INTEGER DEFAULT 13')
-        self.assertEqual(col.sql(), '"colname" INTEGER NOT NULL DEFAULT 13')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER DEFAULT 13')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER NOT NULL DEFAULT 13')
 
         col = Column.match("`colname` TINYINT UNSIGNED,")
         self.assertEqual(col.colname, 'colname')
@@ -255,8 +255,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNotNone(col.unsigned)
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
-        self.assertEqual(col.sql(True), '"colname" SMALLINT')
-        self.assertEqual(col.sql(), '"colname" SMALLINT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" SMALLINT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" SMALLINT')
 
         col = Column.match("`colname` TINYINT(4) ZEROFILL,")
         self.assertEqual(col.colname, 'colname')
@@ -264,8 +264,8 @@ class TestColumn(unittest.TestCase):
         self.assertEqual(col.collen, [4])
         self.assertIsNone(col.unsigned)
         self.assertIsNotNone(col.zerofill)
-        self.assertEqual(col.sql(True), '"colname" SMALLINT')
-        self.assertEqual(col.sql(), '"colname" SMALLINT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" SMALLINT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" SMALLINT')
         self.assertIsNone(col.notnull)
 
         col = Column.match("`colname` INT(4) UNSIGNED ZEROFILL,")
@@ -275,8 +275,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNotNone(col.unsigned)
         self.assertIsNotNone(col.zerofill)
         self.assertIsNone(col.notnull)
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER')
 
 
 
@@ -289,8 +289,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNotNone(col.unsigned)
             self.assertIsNone(col.zerofill)
             self.assertIsNone(col.notnull)
-            self.assertEqual(col.sql(True), '"colname" REAL')
-            self.assertEqual(col.sql(), '"colname" REAL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" REAL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" REAL')
 
             col = Column.match("`colname` {}(4,12) ZEROFILL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -299,8 +299,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.unsigned)
             self.assertIsNotNone(col.zerofill)
             self.assertIsNone(col.notnull)
-            self.assertEqual(col.sql(True), '"colname" REAL')
-            self.assertEqual(col.sql(), '"colname" REAL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" REAL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" REAL')
 
             col = Column.match("`colname` {}( 4, 12 ) UNSIGNED ZEROFILL DEFAULT '13.14',".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -309,8 +309,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNotNone(col.unsigned)
             self.assertIsNotNone(col.zerofill)
             self.assertIsNone(col.notnull)
-            self.assertEqual(col.sql(True), '"colname" REAL DEFAULT 13.14')
-            self.assertEqual(col.sql(), '"colname" REAL DEFAULT 13.14')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" REAL DEFAULT 13.14')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" REAL DEFAULT 13.14')
 
             col = Column.match("`colname` {}( 4, 12 ) UNSIGNED ZEROFILL NOT null,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -319,8 +319,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNotNone(col.unsigned)
             self.assertIsNotNone(col.zerofill)
             self.assertEqual(col.notnull, "NOT null")
-            self.assertEqual(col.sql(True), '"colname" REAL')
-            self.assertEqual(col.sql(), '"colname" REAL NOT NULL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" REAL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" REAL NOT NULL')
 
 
     def test_DOUBLE(self):
@@ -331,8 +331,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNotNone(col.unsigned)
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
-        self.assertEqual(col.sql(True), '"colname" DOUBLE')
-        self.assertEqual(col.sql(), '"colname" DOUBLE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" DOUBLE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" DOUBLE')
 
         col = Column.match("`colname` DOUBLE(4,12) ZEROFILL,")
         self.assertEqual(col.colname, 'colname')
@@ -341,8 +341,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.unsigned)
         self.assertIsNotNone(col.zerofill)
         self.assertIsNone(col.notnull)
-        self.assertEqual(col.sql(True), '"colname" DOUBLE')
-        self.assertEqual(col.sql(), '"colname" DOUBLE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" DOUBLE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" DOUBLE')
 
         col = Column.match("`colname` DOUBLE(4,12) UNSIGNED ZEROFILL,")
         self.assertEqual(col.colname, 'colname')
@@ -351,8 +351,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNotNone(col.unsigned)
         self.assertIsNotNone(col.zerofill)
         self.assertIsNone(col.notnull)
-        self.assertEqual(col.sql(True), '"colname" DOUBLE')
-        self.assertEqual(col.sql(), '"colname" DOUBLE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" DOUBLE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" DOUBLE')
 
 
     def test_NUMERIC(self):
@@ -364,8 +364,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNotNone(col.unsigned)
             self.assertIsNone(col.zerofill)
             self.assertIsNone(col.notnull)
-            self.assertEqual(col.sql(True), '"colname" NUMERIC')
-            self.assertEqual(col.sql(), '"colname" NUMERIC')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" NUMERIC')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" NUMERIC')
 
             col = Column.match("`colname` {}(4,12) ZEROFILL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -374,8 +374,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.unsigned)
             self.assertIsNotNone(col.zerofill)
             self.assertIsNone(col.notnull)
-            self.assertEqual(col.sql(True), '"colname" NUMERIC')
-            self.assertEqual(col.sql(), '"colname" NUMERIC')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" NUMERIC')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" NUMERIC')
 
             col = Column.match("`colname` {}( 4, 12 ) UNSIGNED ZEROFILL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -384,8 +384,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNotNone(col.unsigned)
             self.assertIsNotNone(col.zerofill)
             self.assertIsNone(col.notnull)
-            self.assertEqual(col.sql(True), '"colname" NUMERIC')
-            self.assertEqual(col.sql(), '"colname" NUMERIC')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" NUMERIC')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" NUMERIC')
 
 
     def test_DATE(self):
@@ -397,8 +397,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" DATE')
-        self.assertEqual(col.sql(), '"colname" DATE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" DATE')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" DATE')
 
 
     def test_TIME(self):
@@ -410,8 +410,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" TIME')
-        self.assertEqual(col.sql(), '"colname" TIME')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TIME')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TIME')
 
 
     def test_TIMESTAMP(self):
@@ -423,8 +423,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" TIMESTAMP')
-        self.assertEqual(col.sql(), '"colname" TIMESTAMP')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TIMESTAMP')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TIMESTAMP')
 
 
     def test_DATETIME(self):
@@ -436,8 +436,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" DATETIME')
-        self.assertEqual(col.sql(), '"colname" DATETIME')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" DATETIME')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" DATETIME')
 
 
     def test_YEAR(self):
@@ -449,8 +449,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" INTEGER')
-        self.assertEqual(col.sql(), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" INTEGER')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" INTEGER')
 
 
 
@@ -466,8 +466,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.autoincrement)
             self.assertIsNone(col.charset)
             self.assertIsNone(col.collate)
-            self.assertEqual(col.sql(True), '"colname" TEXT')
-            self.assertEqual(col.sql(), '"colname" TEXT')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TEXT')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TEXT')
 
             col = Column.match("`colname` {}(4) NOT NULL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -479,8 +479,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.autoincrement)
             self.assertIsNone(col.charset)
             self.assertIsNone(col.collate)
-            self.assertEqual(col.sql(True), '"colname" TEXT')
-            self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TEXT')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TEXT NOT NULL')
 
             col = Column.match("`colname` {}(4) CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -492,8 +492,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.autoincrement)
             self.assertEqual(col.charset, "utf8")
             self.assertEqual(col.collate, "utf8_unicode_ci")
-            self.assertEqual(col.sql(True), '"colname" TEXT')
-            self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TEXT')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TEXT NOT NULL')
 
 
     def test_BINARY(self):
@@ -513,8 +513,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.autoincrement)
             self.assertIsNone(col.charset)
             self.assertIsNone(col.collate)
-            self.assertEqual(col.sql(True), '"colname" BLOB')
-            self.assertEqual(col.sql(), '"colname" BLOB')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" BLOB')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" BLOB')
 
             col = Column.match("`colname` {} NOT NULL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -526,8 +526,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.autoincrement)
             self.assertIsNone(col.charset)
             self.assertIsNone(col.collate)
-            self.assertEqual(col.sql(True), '"colname" BLOB')
-            self.assertEqual(col.sql(), '"colname" BLOB NOT NULL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" BLOB')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" BLOB NOT NULL')
 
             col = Column.match("`colname` {} CHARACTER SET utf8 COLLATE utf8_unicode_ci NOT NULL,".format(mysqltype))
             self.assertEqual(col.colname, 'colname')
@@ -539,8 +539,8 @@ class TestColumn(unittest.TestCase):
             self.assertIsNone(col.autoincrement)
             self.assertEqual(col.charset, "utf8")
             self.assertEqual(col.collate, "utf8_unicode_ci")
-            self.assertEqual(col.sql(True), '"colname" BLOB')
-            self.assertEqual(col.sql(), '"colname" BLOB NOT NULL')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" BLOB')
+            self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" BLOB NOT NULL')
 
 
     def test_ENUM(self):
@@ -553,8 +553,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNotNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" TEXT')
-        self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TEXT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TEXT NOT NULL')
 
 
     def test_SET(self):
@@ -567,8 +567,8 @@ class TestColumn(unittest.TestCase):
         self.assertIsNone(col.zerofill)
         self.assertIsNotNone(col.notnull)
         self.assertIsNone(col.autoincrement)
-        self.assertEqual(col.sql(True), '"colname" TEXT')
-        self.assertEqual(col.sql(), '"colname" TEXT NOT NULL')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=True), '"colname" TEXT')
+        self.assertEqual(col.sql(flavor="sqlite", skip_constraints=False), '"colname" TEXT NOT NULL')
 
 
 
@@ -581,8 +581,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.symbol, 'symbol')
         self.assertIsNone(col.indextype)
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
-        self.assertEqual(col.sql(), 'PRIMARY KEY ("index_col_name1", "index_col_name2")')
-        self.assertIsNone(col.index("tbl_name"))
+        self.assertEqual(col.sql(flavor="sqlite"), 'PRIMARY KEY ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.index("tbl_name", flavor="sqlite"))
 
 
     def test_PRIMARY_KEY_type(self):
@@ -591,8 +591,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.symbol, 'symbol')
         self.assertEqual(col.indextype, "USING BTREE")
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
-        self.assertEqual(col.sql(), 'PRIMARY KEY ("index_col_name1", "index_col_name2")')
-        self.assertIsNone(col.index("tbl_name"))
+        self.assertEqual(col.sql(flavor="sqlite"), 'PRIMARY KEY ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.index("tbl_name", flavor="sqlite"))
 
 
     def test_KEY(self):
@@ -602,8 +602,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.indextype)
         self.assertIsNone(col.unique)
         self.assertEqual(col.indexcols, ["index_col_name"])
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_KEY_2(self):
@@ -613,8 +613,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.indextype)
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_KEY_type(self):
@@ -624,8 +624,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indextype, "USING BTREE")
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_KEY_2_type(self):
@@ -635,8 +635,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indextype, "USING HASH")
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_INDEX(self):
@@ -646,8 +646,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.indextype)
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_INDEX_2(self):
@@ -657,8 +657,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.indextype)
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_INDEX_type(self):
@@ -668,8 +668,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indextype, "USING BTREE")
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_INDEX_2_type(self):
@@ -679,8 +679,8 @@ class TestConstraint(unittest.TestCase):
         self.assertEqual(col.indextype, "USING HASH")
         self.assertEqual(col.indexcols, ["index_col_name1", "index_col_name2"])
         self.assertIsNone(col.unique)
-        self.assertEqual(col.index("tbl_name"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
-        self.assertIsNone(col.sql())
+        self.assertEqual(col.index("tbl_name", flavor="sqlite"), 'CREATE INDEX "index_name" ON "tbl_name" ("index_col_name1", "index_col_name2")')
+        self.assertIsNone(col.sql(flavor="sqlite"))
 
 
     def test_UNIQUE_INDEX(self):
@@ -691,8 +691,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.indextype)
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNotNone(col.unique)
-        self.assertEqual(col.sql(), 'UNIQUE ("index_col_name")')
-        self.assertIsNone(col.index("tbl_name"))
+        self.assertEqual(col.sql(flavor="sqlite"), 'UNIQUE ("index_col_name")')
+        self.assertIsNone(col.index("tbl_name", flavor="sqlite"))
 
 
     def test_UNIQUE_KEY(self):
@@ -702,8 +702,8 @@ class TestConstraint(unittest.TestCase):
         self.assertIsNone(col.indextype)
         self.assertEqual(col.indexcols, ["index_col_name"])
         self.assertIsNotNone(col.unique)
-        self.assertEqual(col.sql(), 'UNIQUE ("index_col_name")')
-        self.assertIsNone(col.index("tbl_name"))
+        self.assertEqual(col.sql(flavor="sqlite"), 'UNIQUE ("index_col_name")')
+        self.assertIsNone(col.index("tbl_name", flavor="sqlite"))
 
 
     def test_FULLTEXT_INDEX(self):
@@ -810,10 +810,10 @@ class TestTable(unittest.TestCase):
         tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
         self.assertTrue(tbl.done)
         self.assertEqual(
-                         tbl.sql(skip_constraints=True), '\n'.join((
+                         tbl.sql(flavor="sqlite", skip_constraints=True), '\n'.join((
         'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
         self.assertEqual(
-                         tbl.sql(skip_constraints=False), '\n'.join((
+                         tbl.sql(flavor="sqlite", skip_constraints=False), '\n'.join((
         'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
 
 
@@ -823,10 +823,10 @@ class TestTable(unittest.TestCase):
         tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
         self.assertTrue(tbl.done)
         self.assertEqual(
-                         tbl.sql(skip_constraints=True), '\n'.join((
+                         tbl.sql(flavor="sqlite", skip_constraints=True), '\n'.join((
         'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
         self.assertEqual(
-                         tbl.sql(skip_constraints=False), '\n'.join((
+                         tbl.sql(flavor="sqlite", skip_constraints=False), '\n'.join((
         'CREATE TABLE "my_table" (', '"field1" INTEGER UNIQUE', ');')))
 
 
