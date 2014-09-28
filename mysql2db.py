@@ -179,22 +179,11 @@ class Column:
 
 
 
-class Constraint:
+class _Constraint:
 
-
-    keymatch = re.compile(
-        "\s*(?:CONSTRAINT )?"
-        "\s*(?P<unique>UNIQUE)?"
-        "\s*(?P<fulltext>FULLTEXT|SPATIAL)?"
-        "\s*(?P<key>INDEX|KEY)?"
-        "\s*(?P<symbol>`\w+`)?"
-        "\s*(?P<pkey>PRIMARY KEY)?"
-        "\s*(?P<fkey>FOREIGN KEY)?"
-        "\s*(?P<indextype>USING BTREE|USING HASH)?"
-        "\s*(?P<indexcols>[(][^()]+[)])?"
-        "\s*(?P<check>CHECK [(].*[)])?"
-
-        "\s*(?P<rest>,\s*)?$", re.IGNORECASE).match
+    re_symbol    = "\s*(?:CONSTRAINT)?\s*(?P<symbol>`\w+`)?\s*"
+    re_indextype = "\s*(?P<indextype>USING BTREE|USING HASH)?"
+    re_indexcols = "\s*(?P<indexcols>[(][^()]+[)])"
 
 
     @classmethod
@@ -204,35 +193,111 @@ class Constraint:
         return cls(m)
 
 
+
+
     def __init__(self, matcho):
         self.matcho = matcho
         for key, value in matcho.groupdict().items():
             setattr(self, key, value)
-        if self.symbol is not None:
-            self.symbol = self.symbol.strip('`')
-        if self.indexcols is not None:
-            self.indexcols = [x.strip('`') for x in self.indexcols.strip(')(').split(',')]
-        if self.check is not None:
-            self.check = self.check[5:].strip()
+            if key == 'symbol' and value is not None:
+                self.symbol = value.strip('`')
+            if key == 'indexname' and value is not None:
+                self.indexname = value.strip('`')
+            if key == 'indexcols' and value is not None:
+                self.indexcols = [x.strip('`') for x in value.strip(')(').split(',')]
+            #if key == 'check' and value is not None:
+                #self.check = value[5:].strip()
 
 
     def sql(self):
-        if self.pkey:
-            return '{} ("{}")'.format(self.pkey, '", "'.join(self.indexcols))
-        elif self.unique:
-            return 'UNIQUE ("{}")'.format('", "'.join(self.indexcols))
-
+        return
 
 
     def index(self, table_name):
-        if self.key and not self.unique:
-            return 'CREATE INDEX "{}" ON "{}" ("{}")'.format(self.symbol, table_name, '", "'.join(self.indexcols))
+        return
+
+
+
+class Index(_Constraint):
+
+
+    keymatch = re.compile(
+        _Constraint.re_symbol +
+        "(?P<unique>UNIQUE)?\s*"
+        "(?P<fulltext>FULLTEXT|SPATIAL)?\s*"
+        "(?P<key>INDEX|KEY)?\s*(?P<indexname>`\w+`)?" +
+        _Constraint.re_indextype + _Constraint.re_indexcols,
+        re.IGNORECASE).match
+
+
+    def sql(self):
+        if self.unique:
+            return 'UNIQUE ("{}")'.format('", "'.join(self.indexcols))
+
+
+    def index(self, table_name):
+        if not self.unique:
+            return 'CREATE INDEX "{}" ON "{}" ("{}")'.format(
+                        self.indexname, table_name, '", "'.join(self.indexcols))
+
+
+
+class PrimaryKey(_Constraint):
+
+
+    keymatch = re.compile(
+        _Constraint.re_symbol +
+        "(?P<pkey>PRIMARY KEY)" +
+        _Constraint.re_indextype + _Constraint.re_indexcols,
+        re.IGNORECASE).match
+
+
+    def sql(self):
+        return '{} ("{}")'.format(self.pkey, '", "'.join(self.indexcols))
+
+
+
+class ForeignKey(_Constraint):
+
+
+    keymatch = re.compile(
+        _Constraint.re_symbol +
+        "(?P<fkey>FOREIGN KEY)" +
+        _Constraint.re_indexcols,
+        re.IGNORECASE).match
+
+
+    def sql(self):
+        return '{} ("{}")'.format(self.fkey, '", "'.join(self.indexcols))
+
+
+
+class Check(_Constraint):
+
+
+    keymatch = re.compile(
+        "\s*CHECK\s+(?P<check>[(].*[)])",
+        re.IGNORECASE).match
+
+
+    def sql(self):
+        return '{} ("{}")'.format(self.fkey, '", "'.join(self.indexcols))
+
+
+
+def Constraint(line):
+    for cls in (Index, PrimaryKey, ForeignKey, Check):
+        m = cls.keymatch(line)
+        if m:
+            return cls(m)
+    return None
 
 
 
 class Table:
 
-    creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?", re.IGNORECASE).match
+    creatematch = re.compile("^CREATE(?:\s+TEMPORARY)?\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`(\w+)`(?:\s+[(])?",
+                    re.IGNORECASE).match
 
 
     @classmethod
@@ -259,7 +324,7 @@ class Table:
             return column
 
     def match_constraint(self, line):
-        constraint = Constraint.match(line)
+        constraint = Constraint(line)
         if constraint:
             self.constraints.append(constraint)
             return constraint
