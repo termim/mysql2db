@@ -810,11 +810,15 @@ class TestTable(unittest.TestCase):
         tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
         self.assertTrue(tbl.done)
         self.assertEqual(
-                         tbl.sql(flavor="sqlite", skip_constraints=True), '\n'.join((
-        'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
+                         tbl.sql(flavor="sqlite", skip_constraints=True),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER
+);''')
         self.assertEqual(
-                         tbl.sql(flavor="sqlite", skip_constraints=False), '\n'.join((
-        'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
+                         tbl.sql(flavor="sqlite", skip_constraints=False),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER
+);''')
 
 
     def test_1_UNIQUE(self):
@@ -823,11 +827,15 @@ class TestTable(unittest.TestCase):
         tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
         self.assertTrue(tbl.done)
         self.assertEqual(
-                         tbl.sql(flavor="sqlite", skip_constraints=True), '\n'.join((
-        'CREATE TABLE "my_table" (', '"field1" INTEGER', ');')))
+                         tbl.sql(flavor="sqlite", skip_constraints=True),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER
+);''')
         self.assertEqual(
-                         tbl.sql(flavor="sqlite", skip_constraints=False), '\n'.join((
-        'CREATE TABLE "my_table" (', '"field1" INTEGER UNIQUE', ');')))
+                         tbl.sql(flavor="sqlite", skip_constraints=False),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER UNIQUE
+);''')
 
 
     #def test_match_key_1(self):

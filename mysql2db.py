@@ -359,11 +359,11 @@ class Table:
     def sql(self, flavor, skip_constraints=True):
         if not self.done:
             raise Exception("Table {} is not done yet".format(self.name))
-        l = ['CREATE TABLE "{}" ('.format(self.name)]
+        l = []
         for column in self.columns:
             l.append(column.sql(flavor, skip_constraints))
-        l.append(');')
-        return '\n'.join(l)
+        s = 'CREATE TABLE "{}" (\n    {}\n);'.format(self.name, ',\n    '.join(l))
+        return s
 
 
     def source(self):
