@@ -171,8 +171,8 @@ class Column:
             lst.append("{}".format(self.coltype))
             if not skip_constraints:
                 lst.extend(self.constraints())
-            if self.autoincrement:
-                lst.append("AUTOINCREMENT")
+                if self.autoincrement:
+                    lst.append("AUTOINCREMENT")
         elif flavor == 'pg':
             if self.autoincrement:
                 lst.append("SERIAL")
