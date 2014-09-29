@@ -391,13 +391,15 @@ class MySqlDumpReader(object):
         self.skip_schema = False
         self.schema_only = False
         self.convert_schema = True
+        self.skip_constraints=True
 
 
-    def convert(self, file_in, file_out, overwrite=False, skip_schema=False, schema_only=False, verbose=False, convert_schema=True):
+    def convert(self, file_in, file_out, overwrite=False, skip_schema=False, schema_only=False, convert_schema=True, skip_constraints=True, verbose=False):
         self.verbose = verbose
         self.skip_schema = skip_schema
         self.schema_only = schema_only
         self.convert_schema = convert_schema
+        self.skip_constraints = skip_constraints
         self.open_in(file_in)
         self.open_out(file_out, overwrite)
         self.do_convert()
@@ -577,8 +579,8 @@ class MySqlToSqlite(MySqlDumpToSqlDump):
     def create_table(self, table):
         #if table.name == 'service': return
         if self.verbose:
-            print (table.sql(flavor=self.flavor))
-        self.curs.execute(table.sql(flavor=self.flavor))
+            print (table.sql(flavor=self.flavor, skip_constraints=self.skip_constraints))
+        self.curs.execute(table.sql(flavor=self.flavor, skip_constraints=self.skip_constraints))
 
 
     def do_insert(self, query):

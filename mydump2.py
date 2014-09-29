@@ -38,7 +38,8 @@ def convert2sqlite(args):
         print ("{} ...".format(f))
         timer = Timer()
         c.convert(f, args.output, overwrite=False, verbose=args.verbose,
-                  skip_schema=args.data_only, schema_only=args.schema_only)
+                  skip_schema=args.data_only, schema_only=args.schema_only,
+                  skip_constraints=args.skip_constraints)
         timer.next(f)
 
 
@@ -66,6 +67,7 @@ def main():
         if p == parser_sql:
             group.add_argument('-e', '--extract-schema-only', action='store_true', help='do not convert schema')
         p.add_argument('infiles', metavar='INFILE', nargs='+', help='input MySql dump file')
+        group.add_argument('-c', '--skip-constraints', action='store_true', help='skip constraints')
         p.add_argument('-o','--output', metavar='OUTFILE', help='output file')
 
     try:
