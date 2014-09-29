@@ -838,6 +838,50 @@ class TestTable(unittest.TestCase):
 );''')
 
 
+    def test_1_PRIMARY(self):
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        tbl.feed("`field1` int PRIMARY KEY")
+        tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
+        self.assertTrue(tbl.done)
+        self.assertEqual(
+                         tbl.sql(flavor="sqlite", skip_constraints=True),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER
+);''')
+        self.assertEqual(
+                         tbl.sql(flavor="sqlite", skip_constraints=False),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER PRIMARY KEY
+);''')
+
+
+    def test_1_PRIMARY_AUTO_INCREMENT(self):
+        tbl = Table.match("CREATE TABLE `my_table` (")
+        tbl.feed("`field1` int AUTO_INCREMENT PRIMARY KEY")
+        tbl.feed(") ENGINE=InnoDB AUTO_INCREMENT=237442 DEFAULT CHARSET=utf8;")
+        self.assertTrue(tbl.done)
+        self.assertEqual(
+                         tbl.sql(flavor="sqlite", skip_constraints=True),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER AUTOINCREMENT
+);''')
+        self.assertEqual(
+                         tbl.sql(flavor="sqlite", skip_constraints=False),
+        '''CREATE TABLE "my_table" (
+    "field1" INTEGER PRIMARY KEY AUTOINCREMENT
+);''')
+        self.assertEqual(
+                         tbl.sql(flavor="pg", skip_constraints=True),
+        '''CREATE TABLE "my_table" (
+    "field1" SERIAL
+);''')
+        self.assertEqual(
+                         tbl.sql(flavor="pg", skip_constraints=False),
+        '''CREATE TABLE "my_table" (
+    "field1" SERIAL PRIMARY KEY
+);''')
+
+
     #def test_match_key_1(self):
         #key = " KEY `KeyName` (`FirstName`(20)), "
         #res = self.tbl.match_key(key)

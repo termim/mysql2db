@@ -167,11 +167,17 @@ class Column:
 
     def sql(self, flavor, skip_constraints=True):
         lst = ['"{}"'.format(self.colname)]
-        lst.append("{}".format(self.coltype))
-        if not skip_constraints:
-            lst.extend(self.constraints())
-        if self.autoincrement:
-            lst.append("AUTOINCREMENT")
+        if flavor == 'sqlite':
+            lst.append("{}".format(self.coltype))
+            if not skip_constraints:
+                lst.extend(self.constraints())
+            if self.autoincrement:
+                lst.append("AUTOINCREMENT")
+        elif flavor == 'pg':
+            if self.autoincrement:
+                lst.append("SERIAL")
+            if not skip_constraints:
+                lst.extend(self.constraints())
         if self.default is not None:
             lst.append("DEFAULT {}".format(self.default))
         s = ' '.join(lst)
